@@ -4,11 +4,32 @@ import { loadEnvFiles } from './loadEnvFiles.js';
 // Must run before the schema below is parsed.
 loadEnvFiles();
 
+/**
+ * Treats an unfilled value as absent.
+ *
+ * `.env.example` ships templates like `https://<project-ref>.supabase.co`. A
+ * half-filled template is not a configuration error worth refusing to boot
+ * over — it means "I haven't set this up yet", which for optional services is
+ * a perfectly reasonable state to run in.
+ */
+export function blankIfUnfilled(value: unknown): unknown {
+  if (typeof value !== 'string') return value;
+  const trimmed = value.trim();
+  if (trimmed === '') return undefined;
+  if (trimmed.includes('<') || trimmed.includes('>')) return undefined;
+  return trimmed;
+}
+
+const optionalFilled = <T extends z.ZodTypeAny>(schema: T) =>
+  z.preprocess(blankIfUnfilled, schema.optional());
+
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
   DIRECT_URL: z.string().min(1).optional(),
-  SUPABASE_URL: z.string().url(),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  // Optional: audio replay is stored in Supabase when configured, on local disk
+  // otherwise. Nothing else depends on these.
+  SUPABASE_URL: optionalFilled(z.string().url()),
+  SUPABASE_SERVICE_ROLE_KEY: optionalFilled(z.string().min(1)),
   SUPABASE_AUDIO_BUCKET: z.string().default('session-audio'),
   GEMINI_API_KEY: z.string().optional(),
   // Current Live API preview model (released 2026-03-11, no shutdown announced).
@@ -33,4 +54,8 @@ export const env: Env = envSchema.parse(process.env);
 export function examinerMode(e: Env = env): 'mock' | 'gemini' {
   if (e.EXAMINER_MODE) return e.EXAMINER_MODE;
   return e.GEMINI_API_KEY ? 'gemini' : 'mock';
+}
+
+export function storageMode(e: Env = env): 'supabase' | 'local' {
+  return e.SUPABASE_URL && e.SUPABASE_SERVICE_ROLE_KEY ? 'supabase' : 'local';
 }

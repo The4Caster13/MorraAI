@@ -1,5 +1,5 @@
 import { buildApp } from './app.js';
-import { env, examinerMode } from './config/env.js';
+import { env, examinerMode, storageMode } from './config/env.js';
 import { hintForError } from './errorHint.js';
 import { sessionRepo, stimulusRepo } from './db/repositories/index.js';
 
@@ -31,4 +31,8 @@ try {
 }
 
 await app.listen({ port: env.PORT, host: '0.0.0.0' });
-app.log.info(`Parlons server ready — examiner mode: ${examinerMode()}`);
+app.log.info(
+  `Parlons server ready — examiner: ${examinerMode()}, audio storage: ${
+    storageMode() === 'local' ? 'local disk (storage/)' : 'Supabase'
+  }`,
+);
