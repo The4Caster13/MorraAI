@@ -67,6 +67,15 @@ export interface ScoreSessionResult {
 }
 
 export interface ExaminerService {
+  /**
+   * Whether this examiner produces real, audible speech.
+   *
+   * Question text is normally withheld from the student for exam realism — they
+   * are meant to listen, not read. That only holds if there is something to
+   * listen to: the mock examiner emits silence, so withholding the text as well
+   * leaves the student with no examiner at all.
+   */
+  readonly speaksAloud: boolean;
   openLiveSession(params: OpenLiveSessionParams): Promise<LiveExaminerSession>;
   scoreSession(input: ScoreSessionInput): Promise<ScoreSessionResult>;
 }

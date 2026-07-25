@@ -199,6 +199,8 @@ class GeminiLiveSession implements LiveExaminerSession {
 export const __testing = { GeminiLiveSession };
 
 export class GeminiExaminerService implements ExaminerService {
+  readonly speaksAloud = true;
+
   private ai: GoogleGenAI;
 
   constructor() {

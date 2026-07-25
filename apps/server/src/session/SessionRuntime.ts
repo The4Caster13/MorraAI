@@ -219,7 +219,9 @@ export class SessionRuntime {
             sttConfidence: null,
           })
           .catch((err) => console.error('transcript persist failed', err));
-        if (this.showText) {
+        // Withholding the text is only realistic when the student can hear the
+        // question instead. A silent examiner must always be readable.
+        if (this.showText || !this.examiner.speaksAloud) {
           this.emit({ type: 'server:questionText', text });
         }
       },

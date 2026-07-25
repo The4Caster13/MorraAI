@@ -93,6 +93,9 @@ class MockLiveSession implements LiveExaminerSession {
 }
 
 export class MockExaminerService implements ExaminerService {
+  /** Emits silence, so its questions have to be readable to be perceivable. */
+  readonly speaksAloud = false;
+
   async openLiveSession(params: OpenLiveSessionParams): Promise<LiveExaminerSession> {
     const session = new MockLiveSession(params);
     session.start();
