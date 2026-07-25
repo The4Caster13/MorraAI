@@ -1,0 +1,110 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model User {
+  id          String          @id @default(uuid())
+  displayName String
+  createdAt   DateTime        @default(now())
+  sessions    Session[]
+  consents    ConsentRecord[]
+}
+
+model Stimulus {
+  id             String    @id
+  theme          String
+  subtopic       String
+  imagePath      String
+  captionFr      String
+  culturalLinkFr String
+  attribution    String
+  licenseName    String
+  sourceUrl      String
+  createdAt      DateTime  @default(now())
+  sessions       Session[]
+}
+
+model Session {
+  id                     String              @id @default(uuid())
+  userId                 String
+  user                   User                @relation(fields: [userId], references: [id])
+  stimulusId             String
+  stimulus               Stimulus            @relation(fields: [stimulusId], references: [id])
+  mode                   String
+  status                 String              @default("DRAFT")
+  currentPhase           String?
+  prepSecondsAllotted    Int                 @default(900)
+  presentationSecondsCap Int                 @default(240)
+  notepadBullets         Json?
+  startedAt              DateTime?
+  endedAt                DateTime?
+  createdAt              DateTime            @default(now())
+  segments               TranscriptSegment[]
+  score                  Score?
+  consent                ConsentRecord?
+  audioFiles             AudioFile[]
+}
+
+model TranscriptSegment {
+  id            String   @id @default(uuid())
+  sessionId     String
+  session       Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  phase         String
+  speaker       String
+  text          String
+  startMs       Int
+  endMs         Int
+  sttConfidence Float?
+  createdAt     DateTime @default(now())
+
+  @@index([sessionId, phase])
+}
+
+model AudioFile {
+  id         String   @id @default(uuid())
+  sessionId  String
+  session    Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  phase      String
+  speaker    String
+  filePath   String
+  format     String   @default("wav")
+  durationMs Int
+  createdAt  DateTime @default(now())
+
+  @@unique([sessionId, phase, speaker])
+}
+
+model Score {
+  id             String   @id @default(uuid())
+  sessionId      String   @unique
+  session        Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  criterionA     Int
+  criterionB1    Int
+  criterionB2    Int
+  criterionC     Int
+  total          Int
+  rationaleJson  Json
+  strengthsJson  Json
+  prioritiesJson Json
+  drillsJson     Json
+  confidenceNote String?
+  scoredAt       DateTime @default(now())
+}
+
+model ConsentRecord {
+  id                        String   @id @default(uuid())
+  sessionId                 String   @unique
+  session                   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId                    String
+  user                      User     @relation(fields: [userId], references: [id])
+  consentedAt               DateTime @default(now())
+  consentTextVersion        String
+  recordingConsent          Boolean
+  dataRetentionAcknowledged Boolean
+}
