@@ -15,7 +15,15 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!res.ok) {
     const body = await res.text();
-    throw new Error(`${res.status} ${res.statusText}: ${body}`);
+    // The server sends {error, hint?} — show those rather than raw JSON when it can.
+    try {
+      const parsed = JSON.parse(body) as { error?: unknown; hint?: string };
+      const detail = typeof parsed.error === 'string' ? parsed.error : body;
+      throw new Error(parsed.hint ? `${detail}\n\n${parsed.hint}` : `${res.status}: ${detail}`);
+    } catch (err) {
+      if (err instanceof Error && err.message !== 'Unexpected token') throw err;
+      throw new Error(`${res.status} ${res.statusText}: ${body}`);
+    }
   }
   if (res.status === 204) return undefined as T;
   return res.json() as Promise<T>;
