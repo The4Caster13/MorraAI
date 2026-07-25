@@ -1,8 +1,0 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="800" height="600" viewBox="0 0 800 600" role="img" aria-label="La technologie du quotidien">
-  <rect width="800" height="600" fill="#ea580c"/>
-  <rect x="24" y="24" width="752" height="552" fill="none" stroke="#ffffff" stroke-width="3" stroke-dasharray="14 10" opacity="0.7"/>
-  <text x="400" y="230" text-anchor="middle" font-family="Georgia, serif" font-size="30" fill="#ffffff" opacity="0.9">Ingéniosité humaine</text>
-  <text x="400" y="300" text-anchor="middle" font-family="Georgia, serif" font-size="42" font-weight="bold" fill="#ffffff">La technologie du quotidien</text>
-  <text x="400" y="420" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="26" fill="#ffffff" opacity="0.85">PLACEHOLDER — À REMPLACER</text>
-  <text x="400" y="460" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="18" fill="#ffffff" opacity="0.7">Remplacez cette image par une photo sous licence.</text>
-</svg>
