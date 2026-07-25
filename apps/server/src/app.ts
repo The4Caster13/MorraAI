@@ -17,7 +17,24 @@ const stimuliImageDir = join(repoRoot, 'data', 'stimuli', 'images');
 const webDistDir = join(repoRoot, 'apps', 'web', 'dist');
 
 export async function buildApp() {
-  const app = Fastify({ logger: true });
+  const app = Fastify({
+    // Raw JSON is right for a log aggregator and unreadable for a person. In
+    // development the log is something you actually watch while running the app.
+    logger:
+      env.NODE_ENV === 'production'
+        ? true
+        : {
+            transport: {
+              target: 'pino-pretty',
+              options: {
+                colorize: true,
+                translateTime: 'HH:MM:ss',
+                ignore: 'pid,hostname,reqId,responseTime,req,res',
+                messageFormat: '{msg}',
+              },
+            },
+          },
+  });
 
   // Fastify's default handler returns a bare 500 with no detail, which makes
   // configuration problems (unreachable database, missing table, pooler

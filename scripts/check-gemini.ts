@@ -28,6 +28,15 @@ function ok(msg: string) {
 function fail(msg: string) {
   console.error(`  \x1b[31m✗\x1b[0m ${msg}`);
 }
+function warn(msg: string) {
+  console.error(`  \x1b[33m!\x1b[0m ${msg}`);
+}
+
+/** Models sometimes wrap structured output in a markdown fence despite the mime type. */
+function stripCodeFence(text: string): string {
+  const fenced = text.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/);
+  return fenced ? fenced[1] : text;
+}
 
 async function main(): Promise<number> {
   if (!API_KEY) {
@@ -46,14 +55,30 @@ async function main(): Promise<number> {
   console.log(`\nScoring model: ${SCORING_MODEL}`);
   try {
     const started = Date.now();
+    // Uses responseSchema, exactly as the real scoring call does — a freeform
+    // "reply with JSON" prompt tests prompt obedience rather than the API path.
     const response = await ai.models.generateContent({
       model: SCORING_MODEL,
-      contents: 'Réponds uniquement avec ce JSON exact : {"ok":true}',
-      config: { responseMimeType: "application/json" },
+      contents: "Donne une note d'exemple pour un oral de français.",
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: {
+          type: "object",
+          properties: {
+            mark: { type: "integer", minimum: 0, maximum: 12 },
+            justification: { type: "string" },
+          },
+          required: ["mark", "justification"],
+        } as never,
+      },
     });
-    const text = response.text ?? "";
-    JSON.parse(text); // throws if the model didn't honour the JSON mime type
-    ok(`responded in ${Date.now() - started}ms with valid JSON`);
+    const text = (response.text ?? "").trim();
+    if (!text) throw new Error("Model returned an empty response");
+    const parsed = JSON.parse(stripCodeFence(text)) as { mark?: unknown };
+    if (typeof parsed.mark !== "number") {
+      throw new Error(`Structured output did not match the schema: ${text.slice(0, 120)}`);
+    }
+    ok(`responded in ${Date.now() - started}ms with schema-valid JSON`);
   } catch (err) {
     failures += 1;
     fail(err instanceof Error ? err.message : String(err));
@@ -71,6 +96,9 @@ async function main(): Promise<number> {
       let firstAudioMs: number | null = null;
       let transcript = "";
       let settled = false;
+      let messageCount = 0;
+      const fieldsSeen = new Set<string>();
+      let graceTimer: NodeJS.Timeout | null = null;
 
       const timer = setTimeout(() => {
         if (settled) return;
@@ -82,8 +110,23 @@ async function main(): Promise<number> {
         if (settled) return;
         settled = true;
         clearTimeout(timer);
+        if (graceTimer) clearTimeout(graceTimer);
         if (err) return reject(err);
-        ok(`connected and streamed ${audioBytes} bytes of audio`);
+
+        if (transcript.trim()) ok(`examiner said: "${transcript.trim().slice(0, 80)}"`);
+
+        if (audioBytes === 0) {
+          // Without audio the examiner is mute — the whole premise of a spoken
+          // exam. Report the message shape so the cause is identifiable.
+          warn(`connected, but received 0 bytes of audio across ${messageCount} messages`);
+          warn(`fields seen: ${[...fieldsSeen].join(', ') || '(none)'}`);
+          return reject(
+            new Error('The Live model returned a transcript but no audio — the examiner would be silent.'),
+          );
+        }
+
+        const seconds = audioBytes / (24000 * 2);
+        ok(`streamed ${audioBytes} bytes of audio (~${seconds.toFixed(1)}s at 24kHz)`);
         if (firstAudioMs !== null) {
           const verdict =
             firstAudioMs <= 2500
@@ -93,8 +136,6 @@ async function main(): Promise<number> {
             `time to first audio: ${firstAudioMs}ms (${verdict} the 2.5s PRD target)`,
           );
         }
-        if (transcript.trim())
-          ok(`examiner said: "${transcript.trim().slice(0, 80)}"`);
         resolve();
       };
 
@@ -109,19 +150,32 @@ async function main(): Promise<number> {
           },
           callbacks: {
             onmessage: (message) => {
+              messageCount += 1;
+              for (const [key, value] of Object.entries(message)) {
+                if (value !== undefined && value !== null) fieldsSeen.add(key);
+              }
+
+              // The SDK's `data` getter concatenates every inline-data part, so
+              // it catches audio wherever in the parts array it lands.
+              const inline = message.data;
+              if (inline) {
+                if (firstAudioMs === null) firstAudioMs = Date.now() - started;
+                audioBytes += Buffer.from(inline, "base64").length;
+              }
+
               const content = message.serverContent;
               if (!content) return;
+              for (const key of Object.keys(content)) fieldsSeen.add(`serverContent.${key}`);
+
               const outputText = content.outputTranscription?.text;
               if (outputText) transcript += outputText;
-              for (const part of content.modelTurn?.parts ?? []) {
-                const data = part.inlineData?.data;
-                if (data) {
-                  if (firstAudioMs === null)
-                    firstAudioMs = Date.now() - started;
-                  audioBytes += Buffer.from(data, "base64").length;
-                }
+
+              if (content.turnComplete) {
+                // Audio can trail the turn-complete marker, so allow a grace
+                // period rather than declaring silence the instant it arrives.
+                if (graceTimer) clearTimeout(graceTimer);
+                graceTimer = setTimeout(() => finish(), 2500);
               }
-              if (content.turnComplete) finish();
             },
             onerror: (e: ErrorEvent) =>
               finish(new Error(e.message || "Live socket error")),

@@ -269,12 +269,13 @@ export class GeminiExaminerService implements ExaminerService {
             liveSession?.appendExaminerFragment(outputText);
           }
 
-          for (const part of content.modelTurn?.parts ?? []) {
-            const data = part.inlineData?.data;
-            if (data) {
-              if (liveSession?.hasPendingStudentSpeech()) liveSession.flushStudentTurn();
-              params.onExaminerAudio(Buffer.from(data, 'base64'));
-            }
+          // `message.data` concatenates every inline-data part the SDK found,
+          // which is more robust than walking modelTurn.parts ourselves — the
+          // shape has moved between Live model versions.
+          const audio = message.data;
+          if (audio) {
+            if (liveSession?.hasPendingStudentSpeech()) liveSession.flushStudentTurn();
+            params.onExaminerAudio(Buffer.from(audio, 'base64'));
           }
 
           if (content.turnComplete) {
