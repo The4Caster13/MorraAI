@@ -41,16 +41,22 @@ export const api = {
       body: JSON.stringify(body),
     });
   },
-  getSession(sessionId: string) {
-    return request<SessionDto & { score: ScoreDto | null }>(`/api/sessions/${sessionId}`);
+  getSession(sessionId: string, userId: string) {
+    return request<SessionDto & { score: ScoreDto | null }>(
+      `/api/sessions/${sessionId}?userId=${encodeURIComponent(userId)}`,
+    );
   },
-  getTranscript(sessionId: string) {
-    return request<TranscriptSegmentDto[]>(`/api/sessions/${sessionId}/transcript`);
+  getTranscript(sessionId: string, userId: string) {
+    return request<TranscriptSegmentDto[]>(
+      `/api/sessions/${sessionId}/transcript?userId=${encodeURIComponent(userId)}`,
+    );
   },
   listSessions(userId: string) {
     return request<SessionSummaryDto[]>(`/api/sessions?userId=${encodeURIComponent(userId)}`);
   },
-  deleteSession(sessionId: string) {
-    return request<void>(`/api/sessions/${sessionId}`, { method: 'DELETE' });
+  deleteSession(sessionId: string, userId: string) {
+    return request<void>(`/api/sessions/${sessionId}?userId=${encodeURIComponent(userId)}`, {
+      method: 'DELETE',
+    });
   },
 };

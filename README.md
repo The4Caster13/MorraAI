@@ -15,8 +15,18 @@ This is the **M1 core loop** build:
 - ✅ Supabase Postgres + Supabase Storage for sessions, transcripts and audio
 - ✅ `ExaminerService` abstraction with a **mock** implementation (runs with no API key) and a
   **Gemini Live** implementation that activates automatically once `GEMINI_API_KEY` is set
-- ✅ Rubric scoring engine with structurally-enforced transcript citation
+- ✅ Rubric scoring engine that requires at least one transcript quote per criterion
 - ⚠️ 25 stimuli are **placeholder SVGs** — replace with licensed photos (see below)
+- ⚠️ **No authentication.** `userId` is a UUID the browser generates and stores in
+  `localStorage`. Routes check that the caller's `userId` owns the session, which stops a
+  leaked session ID from exposing someone's recording — but anyone who learns a `userId`
+  can still act as that user. Real signed sessions are required before this handles
+  student voice data outside a trusted test group.
+- ⚠️ Delivery analysis (speech rate, pauses, fillers) from PRD §5.3 is **not implemented**.
+  The adaptive difficulty signal is a coarse heuristic over utterance length and tense
+  variety in `SessionRuntime.competenceEstimate`.
+- ⚠️ A session cannot survive a **server** restart: runtime state is in-memory, and
+  interrupted sessions are marked `ERROR` on boot. Browser refreshes are fine.
 - ❌ Not yet built: HL mode, teacher dashboard, admin panel, billing, PDF export
 
 ## Setup
@@ -42,10 +52,14 @@ canned French examiner and a fixture score report.
 ### 3. Install, migrate, seed
 
 ```bash
-npm install
-npm run db:migrate --workspace=apps/server   # creates tables in Supabase
+npm install                                  # also runs `prisma generate`
+npm run db:deploy --workspace=apps/server    # applies prisma/migrations to Supabase
 npm run db:seed --workspace=apps/server      # loads the 25 stimuli
 ```
+
+Use `db:deploy` (not `db:migrate`) for a first run and for any deployment — it applies the
+committed migration non-interactively. `db:migrate` runs `prisma migrate dev`, which is for
+authoring *new* migrations during development and will prompt.
 
 ### 4. Run
 
@@ -54,6 +68,31 @@ npm run dev     # server on :3001, web on :5173
 ```
 
 Open http://localhost:5173.
+
+## Deploying
+
+The app deploys as a **single service**: with `NODE_ENV=production` the Fastify server
+serves the API, the WebSocket gateway and the built SPA from one origin, so there is no
+proxy or CORS configuration to get wrong.
+
+```bash
+docker build -t parlons .
+docker run -p 3001:3001 --env-file .env -e NODE_ENV=production parlons
+```
+
+Migrations are deliberately **not** run on container boot — apply them as a separate step
+so a crash-looping deploy can't half-apply a schema change:
+
+```bash
+npm run db:deploy --workspace=apps/server
+```
+
+Note that the server runs TypeScript directly via `tsx` rather than compiling to JavaScript.
+That keeps the toolchain simple at the cost of a slower cold start; if boot time starts to
+matter, add a real `tsc` emit step and a `dist` entrypoint.
+
+Before pointing real students at a deployment, read the ⚠️ items under **Status** — in
+particular, the lack of authentication.
 
 ## Enabling the real AI examiner
 
@@ -90,7 +129,8 @@ npm run verify:stimuli
 ```
 
 Covered automatically: session state machine transitions, WS message contract, scoring
-prompt guardrails (evidence-citation enforcement, IB-verbatim denylist), mock examiner flow.
+prompt guardrails (evidence-citation enforcement, IB-verbatim denylist), mock examiner flow,
+Gemini transcript turn-buffering, WAV encoding.
 
 Requires manual browser testing: mic permission, recording quality, examiner latency feel,
 iPad Safari audio behaviour.

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { wsServerMessageSchema, type WsClientMessage } from '@parlons/shared';
 import { useSessionStore } from '../state/sessionStore';
 import { PcmStreamingPlayer } from '../lib/audio/pcmPlayer';
+import { ensureUserId } from '../lib/profile';
 
 export function useWebSocketClient(sessionId: string | undefined) {
   const socketRef = useRef<WebSocket | null>(null);
@@ -15,7 +16,10 @@ export function useWebSocketClient(sessionId: string | undefined) {
     playerRef.current = player;
 
     const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const socket = new WebSocket(`${proto}://${window.location.host}/ws/session/${sessionId}`);
+    const socket = new WebSocket(
+      `${proto}://${window.location.host}/ws/session/${sessionId}` +
+        `?userId=${encodeURIComponent(ensureUserId())}`,
+    );
     socketRef.current = socket;
 
     socket.onopen = () => {

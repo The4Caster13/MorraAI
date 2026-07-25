@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import type { SessionDto } from '@parlons/shared';
 import { api } from '../lib/api';
+import { ensureUserId } from '../lib/profile';
 import { useWebSocketClient } from '../hooks/useWebSocketClient';
 import { useMicCapture } from '../hooks/useMicCapture';
 import { useSessionStore } from '../state/sessionStore';
@@ -39,7 +40,7 @@ export function ExamPage() {
 
   useEffect(() => {
     if (!sessionId) return;
-    void api.getSession(sessionId).then(setSession);
+    void api.getSession(sessionId, ensureUserId()).then(setSession);
     return () => reset();
   }, [sessionId, reset]);
 

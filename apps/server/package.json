@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "tsx watch src/index.ts",
-    "build": "tsc --noEmit",
+    "start": "tsx src/index.ts",
+    "build": "prisma generate && tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "postinstall": "prisma generate",
     "test": "vitest run",
     "db:migrate": "prisma migrate dev",
     "db:deploy": "prisma migrate deploy",
@@ -17,6 +20,7 @@
   },
   "dependencies": {
     "@fastify/cors": "^10.0.1",
+    "@fastify/static": "^8.0.4",
     "@fastify/websocket": "^11.0.1",
     "@google/genai": "^1.0.0",
     "@parlons/shared": "*",
@@ -24,13 +28,13 @@
     "@supabase/supabase-js": "^2.47.10",
     "dotenv": "^16.4.7",
     "fastify": "^5.2.0",
+    "tsx": "^4.19.2",
     "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^26.1.1",
     "@types/ws": "^8.18.1",
     "prisma": "^6.1.0",
-    "tsx": "^4.19.2",
     "vitest": "^2.1.8"
   }
 }

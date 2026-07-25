@@ -12,6 +12,10 @@ const envSchema = z.object({
   GEMINI_SCORING_MODEL: z.string().default('gemini-2.5-flash'),
   EXAMINER_MODE: z.enum(['mock', 'gemini']).optional(),
   PORT: z.coerce.number().default(3001),
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  // Origin allowed to call the API in development, where Vite serves the SPA
+  // on a different port. Unused in production (single-origin deployment).
+  DEV_WEB_ORIGIN: z.string().url().default('http://localhost:5173'),
 });
 
 export type Env = z.infer<typeof envSchema>;

@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import type { ScoreDto, SessionDto, TranscriptSegmentDto } from '@parlons/shared';
 import { CRITERION_MAX } from '@parlons/shared';
 import { api } from '../lib/api';
+import { ensureUserId } from '../lib/profile';
 import { Button, Card, DisclaimerBanner, PageShell } from '../components';
 import { ScoreCard } from '../components/ScoreCard';
 
@@ -15,14 +16,15 @@ export function ReportPage() {
 
   useEffect(() => {
     if (!sessionId) return;
-    void api.getSession(sessionId).then(setSession);
-    void api.getTranscript(sessionId).then(setTranscript);
+    const userId = ensureUserId();
+    void api.getSession(sessionId, userId).then(setSession);
+    void api.getTranscript(sessionId, userId).then(setTranscript);
   }, [sessionId]);
 
   const remove = async () => {
     if (!sessionId) return;
     if (!confirm('Supprimer définitivement cette session, son audio et sa transcription ?')) return;
-    await api.deleteSession(sessionId);
+    await api.deleteSession(sessionId, ensureUserId());
     navigate('/history');
   };
 

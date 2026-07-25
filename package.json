@@ -11,6 +11,8 @@
     "dev:server": "npm run dev --workspace=apps/server",
     "dev:web": "npm run dev --workspace=apps/web",
     "build": "npm run build --workspace=packages/shared && npm run build --workspace=apps/server && npm run build --workspace=apps/web",
+    "start": "npm run start --workspace=apps/server",
+    "typecheck": "npm run build --workspace=packages/shared && npm run typecheck --workspace=apps/server && tsc --noEmit -p apps/web/tsconfig.json",
     "test": "npm run test --workspaces --if-present",
     "verify:stimuli": "tsx scripts/verify-stimuli.ts",
     "db:migrate": "npm run db:migrate --workspace=apps/server",

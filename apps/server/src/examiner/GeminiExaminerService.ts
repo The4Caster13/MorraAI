@@ -9,6 +9,11 @@ import type {
   ScoreSessionResult,
 } from './ExaminerService.js';
 
+/** Sentence-final punctuation, used to segment a long uninterrupted monologue. */
+const SENTENCE_END = /[.!?…]\s*$/;
+/** Don't cut on an early "M." or "etc." — wait for a reasonable chunk first. */
+const MIN_SEGMENT_CHARS = 40;
+
 const PHASE_BRIEFS: Record<string, string> = {
   PART1:
     "L'étudiant présente le stimulus visuel pendant 3 à 4 minutes. Écoute sans interrompre. N'interviens que si on te le demande explicitement.",
@@ -55,10 +60,63 @@ ${params.priorTranscript ? `\nCE QUE L'ÉTUDIANT A DÉJÀ DIT :\n${params.priorT
 class GeminiLiveSession implements LiveExaminerSession {
   private closed = false;
 
+  /**
+   * Gemini streams transcription in fragments, so both directions are buffered
+   * and flushed at turn boundaries. Without this, every fragment would be
+   * emitted as its own utterance: the student's speech would never be marked
+   * final (and so never persisted, leaving the scorer with no evidence), and
+   * the examiner's questions would be shredded into dozens of transcript rows.
+   */
+  private studentBuffer = '';
+  private examinerBuffer = '';
+
   constructor(
     private session: Session,
     private params: OpenLiveSessionParams,
   ) {}
+
+  /** Accumulates a student transcription fragment and emits an interim caption. */
+  appendStudentFragment(text: string): void {
+    this.studentBuffer += text;
+
+    // Part 1 is a 3–4 minute monologue with no examiner turn to close it out, so
+    // segment on sentence boundaries instead — otherwise the whole presentation
+    // arrives as one unbroken row at phase close.
+    if (SENTENCE_END.test(this.studentBuffer) && this.studentBuffer.length >= MIN_SEGMENT_CHARS) {
+      this.flushStudentTurn();
+      return;
+    }
+
+    this.params.onStudentTranscript({
+      text: this.studentBuffer.trim(),
+      isFinal: false,
+      confidence: null,
+    });
+  }
+
+  /** Marks the student's utterance complete so it is persisted for scoring. */
+  flushStudentTurn(): void {
+    const text = this.studentBuffer.trim();
+    this.studentBuffer = '';
+    if (!text) return;
+    this.params.onStudentTranscript({ text, isFinal: true, confidence: null });
+  }
+
+  appendExaminerFragment(text: string): void {
+    this.examinerBuffer += text;
+  }
+
+  /** Emits the examiner's question as a single utterance once its turn ends. */
+  flushExaminerTurn(): void {
+    const text = this.examinerBuffer.trim();
+    this.examinerBuffer = '';
+    if (!text) return;
+    this.params.onExaminerQuestionText(text);
+  }
+
+  hasPendingStudentSpeech(): boolean {
+    return this.studentBuffer.trim().length > 0;
+  }
 
   sendStudentAudioChunk(pcm16: Buffer): void {
     if (this.closed) return;
@@ -101,7 +159,14 @@ class GeminiLiveSession implements LiveExaminerSession {
     });
   }
 
-  /** Nudges the examiner to ask its next question, with current timing/competence context. */
+  /**
+   * Nudges the examiner to open a phase with its first question.
+   *
+   * Deliberately NOT called on every turn: Gemini Live's own voice-activity
+   * detection decides when the student has stopped speaking and responds by
+   * itself. Prompting on each `turnComplete` made the examiner answer its own
+   * turn and fire questions back to back without waiting for the student.
+   */
   promptNextQuestion(timeRemainingMs: number): void {
     if (this.closed || this.params.phase === 'PART1') return;
     const minutes = Math.max(0, Math.round(timeRemainingMs / 60000));
@@ -122,10 +187,16 @@ class GeminiLiveSession implements LiveExaminerSession {
 
   async close(): Promise<void> {
     if (this.closed) return;
+    // Salvage whatever was mid-utterance so the last answer still reaches the scorer.
+    this.flushStudentTurn();
+    this.flushExaminerTurn();
     this.closed = true;
     this.session.close();
   }
 }
+
+/** Exposed for unit tests only — not part of the ExaminerService contract. */
+export const __testing = { GeminiLiveSession };
 
 export class GeminiExaminerService implements ExaminerService {
   private ai: GoogleGenAI;
@@ -154,21 +225,26 @@ export class GeminiExaminerService implements ExaminerService {
           if (content.interrupted) params.onExaminerInterrupted();
 
           const inputText = content.inputTranscription?.text;
-          if (inputText) {
-            params.onStudentTranscript({ text: inputText, isFinal: false, confidence: null });
-          }
+          if (inputText) liveSession?.appendStudentFragment(inputText);
 
           const outputText = content.outputTranscription?.text;
-          if (outputText) params.onExaminerQuestionText(outputText);
+          if (outputText) {
+            // The model has taken the floor, so the student's turn is over.
+            if (liveSession?.hasPendingStudentSpeech()) liveSession.flushStudentTurn();
+            liveSession?.appendExaminerFragment(outputText);
+          }
 
           for (const part of content.modelTurn?.parts ?? []) {
             const data = part.inlineData?.data;
-            if (data) params.onExaminerAudio(Buffer.from(data, 'base64'));
+            if (data) {
+              if (liveSession?.hasPendingStudentSpeech()) liveSession.flushStudentTurn();
+              params.onExaminerAudio(Buffer.from(data, 'base64'));
+            }
           }
 
           if (content.turnComplete) {
+            liveSession?.flushExaminerTurn();
             params.onTurnComplete();
-            liveSession?.promptNextQuestion(params.timeRemainingMs);
           }
         },
         onerror: (e: ErrorEvent) => params.onError(new Error(e.message)),

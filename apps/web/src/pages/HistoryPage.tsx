@@ -23,8 +23,9 @@ export function HistoryPage() {
   }, [userId]);
 
   const remove = async (id: string) => {
+    if (!userId) return;
     if (!confirm('Supprimer définitivement cette session ?')) return;
-    await api.deleteSession(id);
+    await api.deleteSession(id, userId);
     setSessions((prev) => prev.filter((s) => s.id !== id));
   };
 
