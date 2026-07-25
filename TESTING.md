@@ -271,6 +271,39 @@ that you copied the connection string with the password substituted in; the dash
 **Migrations hang or fail on Supabase** — you're running them through the pooled URL. Set
 `DIRECT_URL` to the port-5432 connection string.
 
+**`P3005: The database schema is not empty`** — the target database already has tables in
+`public`, but no `_prisma_migrations` table saying this migration was applied, so Prisma
+refuses to guess. Find out what's actually there first:
+
+```sql
+select table_name from information_schema.tables
+where table_schema = 'public' order by table_name;
+```
+
+*If you see the seven Parlons tables* (`User`, `Stimulus`, `Session`, `TranscriptSegment`,
+`AudioFile`, `Score`, `ConsentRecord`) — the schema is already correct and only the
+bookkeeping is missing. Record it as applied without re-running the SQL:
+
+```bash
+npm run db:baseline --workspace=apps/server
+npm run db:status  --workspace=apps/server   # should report up to date
+```
+
+*If you see anything else, or a partial set* — the cleanest fix on a project with no data
+worth keeping is to wipe the schema and start over. **This destroys everything in `public`**,
+so only do it on a scratch project:
+
+```sql
+drop schema public cascade;
+create schema public;
+grant all on schema public to postgres, anon, authenticated, service_role;
+```
+
+Then `npm run db:deploy --workspace=apps/server` runs clean.
+
+Never run `db:baseline` unless you've confirmed the tables genuinely match — it tells Prisma
+the migration ran when it didn't, and the app will fail later at query time instead of now.
+
 **`prisma generate` fails on install** — needs network access to `binaries.prisma.sh` to
 fetch its query engine. Behind a proxy or firewall, that's the thing to allow.
 
