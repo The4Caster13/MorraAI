@@ -1,9 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Mic, ShieldCheck, Trash2 } from 'lucide-react';
 import { api } from '../../lib/api';
 import { ensureUserId } from '../../lib/profile';
-import { Button, ErrorNote, Logo } from '../../components/ui';
+import { Button, Card, ErrorNote, Logo, PageHeading } from '../../components/ui';
 
 const CONSENT_TEXT_VERSION = '2026-07-25.v1';
 
@@ -28,7 +28,33 @@ export function ConsentPage() {
   const [recording, setRecording] = useState(false);
   const [retention, setRetention] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [checking, setChecking] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // A stale copy of this page (reached via the browser's back button after the
+  // session already moved on, or finished) must never let the student attempt
+  // to consent again — bounce forward to wherever the session actually is
+  // instead of showing a form for a step that's already behind them.
+  useEffect(() => {
+    if (!sessionId) return;
+    let cancelled = false;
+    void api
+      .getSession(sessionId, ensureUserId())
+      .then((session) => {
+        if (cancelled) return;
+        if (session.status !== 'DRAFT') {
+          navigate(`/session/${sessionId}/exam`, { replace: true });
+          return;
+        }
+        setChecking(false);
+      })
+      .catch(() => {
+        if (!cancelled) setChecking(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [sessionId, navigate]);
 
   const submit = async () => {
     if (!sessionId || !recording || !retention) return;
@@ -43,95 +69,93 @@ export function ConsentPage() {
       });
       navigate(`/session/${sessionId}/exam`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Consentement impossible');
+      setError(err instanceof Error ? err.message : 'Could not record consent');
       setBusy(false);
     }
   };
 
+  if (checking) {
+    return (
+      <main className="flex min-h-screen items-center justify-center bg-white">
+        <p className="text-sm text-slate-500">Loading…</p>
+      </main>
+    );
+  }
+
   return (
-    <div className="on-dark min-h-screen bg-navy-deep px-6 py-10 text-white">
+    <main className="min-h-screen bg-white px-6 py-10">
       <div className="mx-auto max-w-2xl">
         <div className="mb-10 flex items-center justify-between">
           <Link
             to="/practice"
-            className="flex items-center gap-2 text-sm text-slate-400 transition-colors hover:text-white"
+            className="flex items-center gap-2 text-sm text-slate-500 transition-colors hover:text-navy"
           >
             <ArrowLeft size={16} /> Change setup
           </Link>
-          <Logo size="sm" dark />
+          <Link to="/" aria-label="Morra AI — home">
+            <Logo size="sm" />
+          </Link>
         </div>
 
-        <h1 className="mb-2 font-display text-3xl font-black text-white">Avant de commencer</h1>
-        <p className="mb-8 text-slate-400">
-          To simulate the oral, Morra AI needs to record your voice. Here is exactly what
-          se passe.
-        </p>
+        <PageHeading
+          label="Before you begin"
+          title="One thing first"
+          intro="To simulate the oral, Morra AI needs to record your voice. Here is exactly what happens."
+        />
 
-        <ul className="mb-8 space-y-4">
-          {POINTS.map(({ icon: Icon, text }) => (
-            <li key={text} className="flex gap-3">
-              <span
-                className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
-                style={{ background: 'rgba(27,79,216,0.15)' }}
-              >
-                <Icon size={15} className="text-brand-bright" aria-hidden="true" />
-              </span>
-              <span className="text-sm leading-relaxed text-slate-300">{text}</span>
-            </li>
-          ))}
-        </ul>
+        <Card className="mt-8">
+          <ul className="mb-2 space-y-4">
+            {POINTS.map(({ icon: Icon, text }) => (
+              <li key={text} className="flex gap-3">
+                <span
+                  className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg"
+                  style={{ background: 'rgba(27,79,216,0.1)' }}
+                >
+                  <Icon size={15} className="text-brand" aria-hidden="true" />
+                </span>
+                <span className="text-sm leading-relaxed text-slate-600">{text}</span>
+              </li>
+            ))}
+          </ul>
 
-        <p
-          className="mb-8 rounded-xl px-4 py-3 text-sm leading-relaxed text-amber-200"
-          style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)' }}
-        >
-          If you are under 18, speak to a parent or teacher before
-          continuer.
-        </p>
+          <fieldset className="space-y-4 border-t pt-6" style={{ borderColor: 'rgba(10,22,40,0.08)' }}>
+            <legend className="sr-only">Required consent</legend>
+            <label className="flex cursor-pointer items-start gap-3 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={recording}
+                onChange={(e) => setRecording(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-brand"
+              />
+              <span>I agree to my voice being recorded during this session.</span>
+            </label>
+            <label className="flex cursor-pointer items-start gap-3 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                checked={retention}
+                onChange={(e) => setRetention(e.target.checked)}
+                className="mt-0.5 h-4 w-4 accent-brand"
+              />
+              <span>I understand the recording is kept until I delete it.</span>
+            </label>
+          </fieldset>
 
-        <fieldset className="mb-8 space-y-4 border-t border-white/10 pt-6">
-          <legend className="sr-only">Consentements requis</legend>
-          <label className="flex cursor-pointer items-start gap-3 text-sm text-slate-300">
-            <input
-              type="checkbox"
-              checked={recording}
-              onChange={(e) => setRecording(e.target.checked)}
-              className="mt-0.5 h-4 w-4 accent-brand"
-            />
-            <span>I agree to my voice being recorded during this session.</span>
-          </label>
-          <label className="flex cursor-pointer items-start gap-3 text-sm text-slate-300">
-            <input
-              type="checkbox"
-              checked={retention}
-              onChange={(e) => setRetention(e.target.checked)}
-              className="mt-0.5 h-4 w-4 accent-brand"
-            />
-            <span>
-              I understand the recording is kept until I delete it.
-            </span>
-          </label>
-        </fieldset>
+          {error && (
+            <div className="mt-6">
+              <ErrorNote>{error}</ErrorNote>
+            </div>
+          )}
 
-        {error && (
-          <div className="mb-6">
-            <ErrorNote dark>{error}</ErrorNote>
+          <div className="mt-8 flex flex-wrap gap-3">
+            <Button onClick={submit} disabled={!recording || !retention || busy} variant="accent">
+              {busy ? 'Saving…' : "I agree, let's start"}
+            </Button>
+            <Button variant="secondary" onClick={() => navigate('/')}>
+              Cancel
+            </Button>
           </div>
-        )}
-
-        <div className="flex flex-wrap gap-3">
-          <Button
-            onClick={submit}
-            disabled={!recording || !retention || busy}
-            variant="accent"
-          >
-            {busy ? 'Enregistrement…' : "J'accepte, commencer"}
-          </Button>
-          <Button variant="ghost-dark" onClick={() => navigate('/')}>
-            Annuler
-          </Button>
-        </div>
+        </Card>
       </div>
-    </div>
+    </main>
   );
 }

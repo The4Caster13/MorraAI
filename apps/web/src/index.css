@@ -127,10 +127,6 @@ body {
   outline-offset: 2px;
 }
 
-.on-dark :focus-visible {
-  outline-color: #60a5fa;
-}
-
 @media (prefers-reduced-motion: reduce) {
   html {
     scroll-behavior: auto;

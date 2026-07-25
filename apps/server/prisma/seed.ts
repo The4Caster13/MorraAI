@@ -38,6 +38,9 @@ async function main() {
         attribution: e.attribution,
         licenseName: e.licenseName,
         sourceUrl: e.sourceUrl,
+        // A stimulus can reappear in a later manifest revision after being
+        // dropped from an earlier one — un-retire it if so.
+        retired: false,
       },
       create: {
         id: e.id,
@@ -53,14 +56,14 @@ async function main() {
     });
   }
 
-  // Remove stimuli that are no longer in the manifest. Without this, an entry
-  // dropped or renamed upstream stays in the database and keeps being handed
-  // to students — pointing at an image file that no longer exists. Rows still
-  // referenced by a past session are kept, since deleting one would take that
-  // student's report with it.
+  // Retire stimuli that are no longer in the manifest, rather than deleting
+  // them outright. A dropped or renamed entry pointing at an image file that
+  // no longer exists must never be offered to a new session or listed
+  // publicly again — but a past session's report still has a foreign key to
+  // this row, so the row itself has to survive.
   const ids = manifest.map((e) => e.id);
   const stale = await prisma.stimulus.findMany({
-    where: { id: { notIn: ids } },
+    where: { id: { notIn: ids }, retired: false },
     select: { id: true },
   });
   const referencedRows = await prisma.session.findMany({ select: { stimulusId: true } });
@@ -74,13 +77,14 @@ async function main() {
     console.log(`Removed ${orphaned.length} stimulus/stimuli no longer in the manifest.`);
   }
   if (inUse.length > 0) {
+    await prisma.stimulus.updateMany({ where: { id: { in: inUse } }, data: { retired: true } });
     console.warn(
-      `${inUse.length} outdated stimulus/stimuli kept because past sessions reference them: ` +
-        `${inUse.join(', ')}. Their image files may no longer exist.`,
+      `${inUse.length} outdated stimulus/stimuli retired (kept for past sessions, no longer ` +
+        `offered to new ones): ${inUse.join(', ')}.`,
     );
   }
 
-  console.log(`Seeded ${manifest.length} stimuli.`);
+  console.log(`Seeded ${manifest.length} active stimuli.`);
 }
 
 main()

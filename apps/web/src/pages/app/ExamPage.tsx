@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Award, Mic, MicOff, Play, RefreshCw } from 'lucide-react';
+import { Award, Mic, MicOff, Play } from 'lucide-react';
 import { PART1_SECONDS_CAP, type SessionDto } from '@morrai/shared';
 import { api } from '../../lib/api';
 import { ensureUserId } from '../../lib/profile';
@@ -9,15 +9,27 @@ import { useWebSocketClient } from '../../hooks/useWebSocketClient';
 import { useMicCapture } from '../../hooks/useMicCapture';
 import { useSessionStore } from '../../state/sessionStore';
 import {
-  AdaptationPanel,
   AudioMeter,
-  DarkCaptionStream,
-  DarkNotepad,
+  CaptionStream,
   ExamHeader,
+  Notepad,
   PrepTips,
   RecordingWave,
 } from '../../components/exam';
 import { Button, ErrorNote, formatTime } from '../../components/ui';
+import { useConfirm } from '../../components/ConfirmDialog';
+
+// States in which bailing out and restarting makes sense — before prep
+// starts and after the exam is done, there is nothing active to quit out of.
+const QUITTABLE = new Set([
+  'CONSENTED',
+  'PREP',
+  'PART1_INTRO',
+  'PART1_RECORDING',
+  'PART1_CLOSING',
+  'PART2_QA',
+  'PART3_QA',
+]);
 
 export function ExamPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -25,6 +37,7 @@ export function ExamPage() {
   const [session, setSession] = useState<SessionDto | null>(null);
   const [bullets, setBullets] = useState<string[]>([]);
   const [debugText, setDebugText] = useState('');
+  const { confirm, dialog } = useConfirm();
   const [finishing, setFinishing] = useState(false);
   const [ending, setEnding] = useState(false);
 
@@ -37,7 +50,6 @@ export function ExamPage() {
   const showQuestionText = useSessionStore((s) => s.showQuestionText);
   const setShowQuestionText = useSessionStore((s) => s.setShowQuestionText);
   const part1HardStopped = useSessionStore((s) => s.part1HardStopped);
-  const competence = useSessionStore((s) => s.competence);
   const complete = useSessionStore((s) => s.complete);
   const error = useSessionStore((s) => s.error);
   const reset = useSessionStore((s) => s.reset);
@@ -62,6 +74,16 @@ export function ExamPage() {
       navigate(`/session/${sessionId}/report`);
     }
   }, [complete, status, session?.status, sessionId, navigate]);
+
+  // A non-recoverable error (e.g. a stale action racing an already-abandoned
+  // session) used to leave a dead banner on screen with no way forward short
+  // of a manual reload. Auto-recover instead: show the message briefly, then
+  // send the student back to start a fresh attempt.
+  useEffect(() => {
+    if (!error || error.recoverable) return;
+    const id = window.setTimeout(() => navigate('/practice'), 2500);
+    return () => window.clearTimeout(id);
+  }, [error, navigate]);
 
   // Clear the in-flight flags once the server confirms a phase change, so a
   // rejected request cannot leave the buttons permanently disabled.
@@ -105,11 +127,22 @@ export function ExamPage() {
     }
   };
 
+  const forceQuit = async () => {
+    const ok = await confirm({
+      message: 'Quit this session and start over? Your progress so far will not be scored.',
+      danger: true,
+      confirmLabel: 'Force quit',
+    });
+    if (!ok) return;
+    setEnding(true);
+    send({ type: 'client:endSessionEarly' });
+  };
+
   if (!session || !content) {
     return (
-      <div className="on-dark flex min-h-screen items-center justify-center bg-navy-deep text-slate-400">
+      <main className="flex min-h-screen items-center justify-center bg-white text-slate-500">
         <p>Loading session…</p>
-      </div>
+      </main>
     );
   }
 
@@ -117,7 +150,7 @@ export function ExamPage() {
   const isQa = status === 'PART2_QA' || status === 'PART3_QA';
 
   return (
-    <div className="on-dark flex min-h-screen flex-col bg-navy-deep">
+    <div className="flex min-h-screen flex-col bg-white">
       <ExamHeader
         themeLabel={content.label}
         accent={accent}
@@ -125,11 +158,12 @@ export function ExamPage() {
         remainingMs={remainingMs}
         recording={recordingActive}
         phaseTitle={phaseTitle()}
+        onForceQuit={QUITTABLE.has(status ?? '') ? forceQuit : undefined}
       />
 
       <div className="flex flex-1 flex-col lg:flex-row lg:overflow-hidden">
         {/* Stimulus — always visible, exactly as the candidate sees it in the real exam. */}
-        <div className="relative min-h-[16rem] flex-1 overflow-hidden bg-black/40">
+        <div className="relative min-h-[16rem] flex-1 overflow-hidden bg-slate-100">
           <img
             src={session.stimulus.imageUrl}
             alt={session.stimulus.captionFr}
@@ -138,16 +172,15 @@ export function ExamPage() {
           <div
             className="pointer-events-none absolute inset-0"
             style={{
-              background:
-                'linear-gradient(to top, rgba(7,15,30,0.9) 0%, transparent 45%)',
+              background: 'linear-gradient(to top, rgba(10,22,40,0.75) 0%, transparent 45%)',
             }}
           />
           <figcaption className="absolute inset-x-6 bottom-5">
-            <p className="text-sm font-medium leading-snug text-slate-100">
+            <p className="text-sm font-medium leading-snug text-white">
               {session.stimulus.captionFr}
             </p>
-            <p className="mt-1 text-xs text-slate-400">{session.stimulus.culturalLinkFr}</p>
-            <p className="mt-1 text-[11px] text-slate-500">
+            <p className="mt-1 text-xs text-white/70">{session.stimulus.culturalLinkFr}</p>
+            <p className="mt-1 text-[11px] text-white/50">
               {session.stimulus.attribution} — {session.stimulus.licenseName}
             </p>
           </figcaption>
@@ -155,21 +188,17 @@ export function ExamPage() {
 
         {/* Control panel */}
         <aside
-          className="flex w-full shrink-0 flex-col gap-4 border-t p-6 lg:w-[26rem] lg:overflow-y-auto lg:border-l lg:border-t-0"
-          style={{ borderColor: 'rgba(255,255,255,0.06)', background: '#0a1628' }}
+          className="flex w-full shrink-0 flex-col gap-4 border-t bg-white p-6 lg:w-[26rem] lg:overflow-y-auto lg:border-l lg:border-t-0"
+          style={{ borderColor: 'rgba(10,22,40,0.08)' }}
         >
-          <p className="text-xs text-slate-500" aria-live="polite">
+          <p className="text-xs text-slate-400" aria-live="polite">
             {connected ? 'Connected to the examiner' : 'Connecting…'}
           </p>
 
-          {error && <ErrorNote dark>{error.message}</ErrorNote>}
+          {error && <ErrorNote>{error.message}</ErrorNote>}
           {micError && (
             <p
-              className="rounded-xl px-3 py-2 text-xs text-amber-200"
-              style={{
-                background: 'rgba(245,158,11,0.1)',
-                border: '1px solid rgba(245,158,11,0.25)',
-              }}
+              className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-800"
             >
               Microphone unavailable: {micError}
             </p>
@@ -178,10 +207,10 @@ export function ExamPage() {
           {status === 'CONSENTED' && (
             <div className="flex flex-1 flex-col justify-center gap-5 text-center">
               <div>
-                <h2 className="mb-2 font-display text-xl font-bold text-white">
+                <h2 className="mb-2 font-display text-xl font-bold text-navy">
                   You're all set
                 </h2>
-                <p className="text-sm leading-relaxed text-slate-400">
+                <p className="text-sm leading-relaxed text-slate-500">
                   You'll get {Math.round(session.prepSecondsAllotted / 60)} minutes to prepare, then a{' '}
                   {PART1_SECONDS_CAP / 60} minute presentation before the examiner's questions.
                 </p>
@@ -211,7 +240,7 @@ export function ExamPage() {
 
               <PrepTips accent={accent} />
 
-              <DarkNotepad
+              <Notepad
                 bullets={bullets}
                 accent={accent}
                 onChange={(next) => {
@@ -220,7 +249,7 @@ export function ExamPage() {
                 }}
               />
 
-              <div className="mt-auto flex flex-col gap-2 border-t border-white/10 pt-4">
+              <div className="mt-auto flex flex-col gap-2 border-t pt-4" style={{ borderColor: 'rgba(10,22,40,0.08)' }}>
                 <Button
                   variant="accent"
                   accent={accent}
@@ -230,7 +259,7 @@ export function ExamPage() {
                   <Mic size={16} /> I'm ready — present
                 </Button>
                 {isPractice && (
-                  <Button variant="ghost-dark" full onClick={() => send({ type: 'client:skipPrep' })}>
+                  <Button variant="secondary" full onClick={() => send({ type: 'client:skipPrep' })}>
                     Skip preparation
                   </Button>
                 )}
@@ -241,22 +270,19 @@ export function ExamPage() {
           {isPart1 && (
             <>
               <div>
-                <h2 className="text-lg font-bold text-white">Presentation in progress</h2>
+                <h2 className="text-lg font-bold text-navy">Presentation in progress</h2>
                 <p className="text-xs text-slate-400">
                   Speak for {PART1_SECONDS_CAP / 60} minutes.
                 </p>
               </div>
 
               <div
-                className="flex flex-col items-center justify-center gap-3 rounded-xl py-8"
-                style={{
-                  background: 'rgba(255,255,255,0.02)',
-                  border: '1px solid rgba(255,255,255,0.06)',
-                }}
+                className="flex flex-col items-center justify-center gap-3 rounded-xl bg-slate-50 py-8"
+                style={{ border: '1px solid rgba(10,22,40,0.07)' }}
               >
                 <RecordingWave active={status === 'PART1_RECORDING'} />
                 <p className="text-xs text-slate-400">
-                  {status === 'PART1_RECORDING' ? 'Enregistrement actif' : 'Micro inactif'}
+                  {status === 'PART1_RECORDING' ? 'Recording active' : 'Mic inactive'}
                 </p>
               </div>
 
@@ -269,7 +295,7 @@ export function ExamPage() {
                   </h3>
                   <ul className="space-y-1">
                     {bullets.filter(Boolean).map((b, i) => (
-                      <li key={i} className="flex gap-2 text-sm text-slate-300">
+                      <li key={i} className="flex gap-2 text-sm text-slate-700">
                         <span style={{ color: accent }} aria-hidden="true">
                           •
                         </span>
@@ -282,20 +308,16 @@ export function ExamPage() {
 
               {part1HardStopped && (
                 <p
-                  className="rounded-xl px-3 py-2 text-sm text-amber-200"
-                  style={{
-                    background: 'rgba(245,158,11,0.1)',
-                    border: '1px solid rgba(245,158,11,0.25)',
-                  }}
+                  className="rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-800"
                   role="status"
                 >
                   The examiner has stopped you — your {PART1_SECONDS_CAP / 60} minutes are up.
                 </p>
               )}
 
-              <div className="mt-auto border-t border-white/10 pt-4">
+              <div className="mt-auto border-t pt-4" style={{ borderColor: 'rgba(10,22,40,0.08)' }}>
                 <Button
-                  variant="ghost-dark"
+                  variant="secondary"
                   full
                   onClick={() => {
                     setFinishing(true);
@@ -315,15 +337,15 @@ export function ExamPage() {
           {isQa && (
             <>
               <div className="flex items-center justify-between gap-3">
-                <h2 className="text-lg font-bold text-white">
+                <h2 className="text-lg font-bold text-navy">
                   {status === 'PART2_QA' ? 'Discussion' : 'Conversation'}
                 </h2>
                 <span
                   className="rounded-full px-2.5 py-1 text-xs font-medium"
                   style={
                     examinerSpeaking
-                      ? { background: `${accent}22`, color: accent }
-                      : { background: 'rgba(34,197,94,0.12)', color: '#4ade80' }
+                      ? { background: `${accent}18`, color: accent }
+                      : { background: 'rgba(34,197,94,0.12)', color: '#15803d' }
                   }
                   aria-live="polite"
                 >
@@ -332,10 +354,9 @@ export function ExamPage() {
               </div>
 
               <AudioMeter level={level} />
-              <AdaptationPanel competence={competence} />
 
               {isPractice && (
-                <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
+                <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-600">
                   <input
                     type="checkbox"
                     checked={showQuestionText}
@@ -349,18 +370,16 @@ export function ExamPage() {
                 </label>
               )}
 
-              <DarkCaptionStream lines={captions} />
+              <CaptionStream lines={captions} />
 
               <div className="flex flex-col gap-2">
-                <Button variant="ghost-dark" full onClick={() => send({ type: 'client:requestRephrase' })}>
-                  <RefreshCw size={15} /> Could you repeat that?
-                </Button>
                 <Button
                   variant="danger"
                   full
                   disabled={ending}
-                  onClick={() => {
-                    if (!confirm('End the session now?')) return;
+                  onClick={async () => {
+                    if (!(await confirm({ message: 'End the session now?', danger: true, confirmLabel: 'End session' })))
+                      return;
                     setEnding(true);
                     send({ type: 'client:endSessionEarly' });
                   }}
@@ -371,7 +390,8 @@ export function ExamPage() {
 
               {isPractice && phase && (
                 <form
-                  className="flex gap-2 border-t border-white/10 pt-4"
+                  className="flex gap-2 border-t pt-4"
+                  style={{ borderColor: 'rgba(10,22,40,0.08)' }}
                   onSubmit={(e) => {
                     e.preventDefault();
                     if (!debugText.trim()) return;
@@ -385,10 +405,10 @@ export function ExamPage() {
                     onChange={(e) => setDebugText(e.target.value)}
                     placeholder="Answer in writing (no mic)"
                     aria-label="Written answer"
-                    className="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500 focus:border-brand"
+                    className="min-w-0 flex-1 rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-navy outline-none placeholder:text-slate-400 focus:border-brand"
                   />
                   <Button type="submit" variant="accent" accent={accent}>
-                    Envoyer
+                    Send
                   </Button>
                 </form>
               )}
@@ -399,8 +419,8 @@ export function ExamPage() {
             <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
               <Award size={32} style={{ color: accent }} aria-hidden="true" />
               <div>
-                <h2 className="mb-1 font-display text-xl font-bold text-white">Oral complete</h2>
-                <p className="text-sm text-slate-400" aria-live="polite">
+                <h2 className="mb-1 font-display text-xl font-bold text-navy">Oral complete</h2>
+                <p className="text-sm text-slate-500" aria-live="polite">
                   The examiner is marking your oral…
                 </p>
               </div>
@@ -413,6 +433,7 @@ export function ExamPage() {
           )}
         </aside>
       </div>
+      {dialog}
     </div>
   );
 }

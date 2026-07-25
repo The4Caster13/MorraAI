@@ -22,8 +22,8 @@ export interface ThemeContent {
 export const THEME_CONTENT: ThemeContent[] = [
   {
     id: 'identites',
-    label: THEME_LABELS_EN.identites,
-    subtitle: THEME_LABELS.identites,
+    label: THEME_LABELS.identites,
+    subtitle: THEME_LABELS_EN.identites,
     icon: Users,
     color: '#1b4fd8',
     description:
@@ -34,8 +34,8 @@ export const THEME_CONTENT: ThemeContent[] = [
   },
   {
     id: 'experiences',
-    label: THEME_LABELS_EN.experiences,
-    subtitle: THEME_LABELS.experiences,
+    label: THEME_LABELS.experiences,
+    subtitle: THEME_LABELS_EN.experiences,
     icon: BookOpen,
     color: '#0ea5e9',
     description: 'Leisure, holidays and travel, rites of passage, customs and traditions.',
@@ -45,8 +45,8 @@ export const THEME_CONTENT: ThemeContent[] = [
   },
   {
     id: 'ingeniosite',
-    label: THEME_LABELS_EN.ingeniosite,
-    subtitle: THEME_LABELS.ingeniosite,
+    label: THEME_LABELS.ingeniosite,
+    subtitle: THEME_LABELS_EN.ingeniosite,
     icon: Lightbulb,
     color: '#7c3aed',
     description:
@@ -57,8 +57,8 @@ export const THEME_CONTENT: ThemeContent[] = [
   },
   {
     id: 'organisation',
-    label: THEME_LABELS_EN.organisation,
-    subtitle: THEME_LABELS.organisation,
+    label: THEME_LABELS.organisation,
+    subtitle: THEME_LABELS_EN.organisation,
     icon: Globe,
     color: '#059669',
     description: 'Neighbourhoods, education, the world of work, media and communication.',
@@ -68,8 +68,8 @@ export const THEME_CONTENT: ThemeContent[] = [
   },
   {
     id: 'planete',
-    label: THEME_LABELS_EN.planete,
-    subtitle: THEME_LABELS.planete,
+    label: THEME_LABELS.planete,
+    subtitle: THEME_LABELS_EN.planete,
     icon: Leaf,
     color: '#16a34a',
     description: 'The environment, peace and conflict, equality, globalisation.',

@@ -91,22 +91,22 @@ export function PracticePage() {
   };
 
   return (
-    <div className="on-dark min-h-screen bg-navy-deep px-6 py-10 text-white">
+    <div className="min-h-screen bg-white px-6 py-10">
       <div ref={ref} className="mx-auto max-w-5xl">
         <div className="mb-10 flex items-center justify-between">
           <Link
             to="/"
-            className="flex items-center gap-2 text-sm text-slate-400 transition-colors hover:text-white"
+            className="flex items-center gap-2 text-sm text-slate-500 transition-colors hover:text-navy"
           >
             <ArrowLeft size={16} /> Back to site
           </Link>
-          <Logo size="sm" dark />
+          <Link to="/" aria-label="Morra AI — home">
+            <Logo size="sm" />
+          </Link>
         </div>
 
-        <h1 className="mb-2 font-display text-4xl font-black text-white">
-          Set up your oral
-        </h1>
-        <p className="mb-10 text-slate-400">
+        <h1 className="mb-2 font-display text-4xl font-black text-navy">Set up your oral</h1>
+        <p className="mb-10 text-slate-500">
           Choose your mode. The examiner adapts the difficulty to your level automatically as
           the session goes on.
         </p>
@@ -119,7 +119,7 @@ export function PracticePage() {
           type="text"
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
-          className="mb-10 w-full max-w-xs rounded-xl border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white outline-none placeholder:text-slate-500 focus:border-brand"
+          className="mb-10 w-full max-w-xs rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-navy outline-none focus:border-brand"
         />
 
         <fieldset className="mb-10">
@@ -138,21 +138,21 @@ export function PracticePage() {
                   style={
                     active
                       ? {
-                          background: 'rgba(27,79,216,0.18)',
-                          border: '1px solid rgba(27,79,216,0.5)',
-                          boxShadow: '0 8px 32px rgba(27,79,216,0.2)',
+                          background: 'rgba(27,79,216,0.08)',
+                          border: '1px solid rgba(27,79,216,0.4)',
+                          boxShadow: '0 8px 32px rgba(27,79,216,0.12)',
                         }
                       : {
-                          background: 'rgba(255,255,255,0.03)',
-                          border: '1px solid rgba(255,255,255,0.07)',
+                          background: '#fff',
+                          border: '1px solid rgba(10,22,40,0.08)',
                         }
                   }
                 >
                   <span className="mb-1 flex items-center gap-2">
-                    <span className="font-bold text-white">{m.label}</span>
-                    {active && <CheckCircle size={14} className="text-brand-bright" />}
+                    <span className="font-bold text-navy">{m.label}</span>
+                    {active && <CheckCircle size={14} className="text-brand" />}
                   </span>
-                  <span className="block text-xs leading-relaxed text-slate-400">{m.blurb}</span>
+                  <span className="block text-xs leading-relaxed text-slate-500">{m.blurb}</span>
                 </button>
               );
             })}
@@ -176,7 +176,7 @@ export function PracticePage() {
               onChange={(e) => setPrepMinutes(Number(e.target.value))}
               className="w-full accent-brand"
             />
-            <p className="mt-1 text-xs text-slate-500">
+            <p className="mt-1 text-xs text-slate-400">
               The real exam gives you {PREP_SECONDS_DEFAULT / 60} minutes to prepare, then a{' '}
               {PART1_SECONDS_CAP / 60} minute presentation and{' '}
               {QUESTIONING_SECONDS_TOTAL / 60} minutes of questioning.
@@ -187,7 +187,7 @@ export function PracticePage() {
         <div className="mb-4 flex items-baseline justify-between">
           <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-400">Theme</h2>
           {!themeIsChoosable && (
-            <span className="flex items-center gap-1.5 text-xs text-slate-500">
+            <span className="flex items-center gap-1.5 text-xs text-slate-400">
               <Shuffle size={12} /> Chosen for you in exam mode
             </span>
           )}
@@ -212,27 +212,27 @@ export function PracticePage() {
             style={
               themeIsChoosable && theme === null
                 ? {
-                    background: '#1b4fd818',
-                    border: '1px solid #1b4fd850',
-                    boxShadow: '0 8px 32px #1b4fd820',
+                    background: '#1b4fd80f',
+                    border: '1px solid #1b4fd840',
+                    boxShadow: '0 8px 32px #1b4fd815',
                   }
                 : {
-                    background: 'rgba(255,255,255,0.03)',
-                    border: '1px solid rgba(255,255,255,0.07)',
+                    background: '#fff',
+                    border: '1px solid rgba(10,22,40,0.08)',
                   }
             }
           >
             <span
               className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl"
-              style={{ background: '#1b4fd822' }}
+              style={{ background: '#1b4fd818' }}
             >
               <Shuffle size={22} style={{ color: '#1b4fd8' }} aria-hidden="true" />
             </span>
-            <span className="mb-1 block text-lg font-bold text-white">Random</span>
+            <span className="mb-1 block text-lg font-bold text-navy">Random</span>
             <span className="mb-3 block text-xs font-medium" style={{ color: '#1b4fd8' }}>
               Just like the exam
             </span>
-            <span className="block text-sm leading-relaxed text-slate-400">
+            <span className="block text-sm leading-relaxed text-slate-500">
               The examiner picks the theme and the stimulus for you, with no warning.
             </span>
             {themeIsChoosable && theme === null && (
@@ -255,27 +255,27 @@ export function PracticePage() {
                 style={
                   active
                     ? {
-                        background: `${t.color}18`,
-                        border: `1px solid ${t.color}50`,
-                        boxShadow: `0 8px 32px ${t.color}20`,
+                        background: `${t.color}0f`,
+                        border: `1px solid ${t.color}40`,
+                        boxShadow: `0 8px 32px ${t.color}15`,
                       }
                     : {
-                        background: 'rgba(255,255,255,0.03)',
-                        border: '1px solid rgba(255,255,255,0.07)',
+                        background: '#fff',
+                        border: '1px solid rgba(10,22,40,0.08)',
                       }
                 }
               >
                 <span
                   className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl"
-                  style={{ background: `${t.color}22` }}
+                  style={{ background: `${t.color}18` }}
                 >
                   <Icon size={22} style={{ color: t.color }} aria-hidden="true" />
                 </span>
-                <span className="mb-1 block text-lg font-bold text-white">{t.label}</span>
+                <span className="mb-1 block text-lg font-bold text-navy">{t.label}</span>
                 <span className="mb-3 block text-xs font-medium" style={{ color: t.color }}>
                   {t.subtitle}
                 </span>
-                <span className="block text-sm leading-relaxed text-slate-400">
+                <span className="block text-sm leading-relaxed text-slate-500">
                   {t.description}
                 </span>
                 {active && (
@@ -290,7 +290,7 @@ export function PracticePage() {
 
         {error && (
           <div className="mt-8">
-            <ErrorNote dark>{error}</ErrorNote>
+            <ErrorNote>{error}</ErrorNote>
           </div>
         )}
 
@@ -303,7 +303,7 @@ export function PracticePage() {
                 ? `Start — ${THEME_CONTENT.find((t) => t.id === effectiveTheme)!.label}`
                 : 'Start the oral'}
           </Button>
-          <p className="text-xs text-slate-500">
+          <p className="text-xs text-slate-400">
             {effectiveTheme
               ? 'A stimulus from this theme will be drawn at random.'
               : 'A theme and stimulus will be drawn at random, just like the exam.'}

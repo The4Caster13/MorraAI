@@ -16,7 +16,7 @@ export function App() {
           <Route path="/" element={<LandingPage />} />
         </Route>
 
-        {/* Exam flow runs full-bleed and dark, without the marketing chrome. */}
+        {/* Exam flow runs full-bleed, without the marketing chrome. */}
         <Route path="/practice" element={<PracticePage />} />
         <Route path="/session/:sessionId/consent" element={<ConsentPage />} />
         <Route path="/session/:sessionId/exam" element={<ExamPage />} />

@@ -76,6 +76,16 @@ export const sessionRoutes: FastifyPluginAsync = async (app) => {
     if (session.userId !== parsed.data.userId)
       return reply.code(403).send({ error: 'Not your session' });
 
+    // A browser-back landing on a stale consent screen for a session that has
+    // already moved on (or finished) re-submits the same consent the student
+    // already gave. That is not a new request to reject with a 409 — it is
+    // the same fact restated, so treat it as a no-op and hand back where the
+    // session actually is, rather than surfacing an "invalid transition"
+    // error the student has no way to act on.
+    if (session.status !== 'DRAFT') {
+      return toSessionDto(session);
+    }
+
     try {
       assertTransition(session.status as never, 'CONSENTED');
     } catch (err) {

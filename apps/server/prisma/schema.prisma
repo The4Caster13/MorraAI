@@ -26,6 +26,10 @@ model Stimulus {
   attribution    String
   licenseName    String
   sourceUrl      String
+  // True for a row dropped from the manifest but kept only because a past
+  // session still references it — its image file may no longer exist, so it
+  // must never be offered to a new session or listed publicly.
+  retired        Boolean   @default(false)
   createdAt      DateTime  @default(now())
   sessions       Session[]
 }

@@ -38,9 +38,17 @@ export function getStoredUserId(): string | null {
   return localStorage.getItem(USER_ID_KEY);
 }
 
+/** Placeholder names from before the app's UI was translated to English. */
+const STALE_DISPLAY_NAMES = new Set(['Élève', 'Test Élève']);
+
 export function getStoredDisplayName(): string {
   migrateLegacyKeys();
-  return localStorage.getItem(USER_NAME_KEY) ?? '';
+  const stored = localStorage.getItem(USER_NAME_KEY) ?? '';
+  if (STALE_DISPLAY_NAMES.has(stored)) {
+    localStorage.removeItem(USER_NAME_KEY);
+    return '';
+  }
+  return stored;
 }
 
 export function saveProfile(id: string, displayName: string): void {
