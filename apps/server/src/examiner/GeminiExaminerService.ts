@@ -250,6 +250,12 @@ export class GeminiExaminerService implements ExaminerService {
         responseModalities: [Modality.AUDIO],
         inputAudioTranscription: {},
         outputAudioTranscription: {},
+        // Some Live models transcribe their own speech but synthesise no audio
+        // unless a voice is named — which presents as a silent examiner.
+        speechConfig: {
+          voiceConfig: { prebuiltVoiceConfig: { voiceName: env.GEMINI_VOICE } },
+          languageCode: 'fr-FR',
+        },
         systemInstruction: systemInstruction(params),
       },
       callbacks: {

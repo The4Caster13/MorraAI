@@ -60,6 +60,8 @@ const envSchema = z.object({
   GEMINI_LIVE_MODEL: z.string().default('gemini-3.1-flash-live-preview'),
   // gemini-2.5-flash still works but is scheduled for shutdown on 2026-10-16.
   GEMINI_SCORING_MODEL: z.string().default('gemini-3.5-flash'),
+  // Prebuilt Live voice. Kore is a clear, neutral choice for an examiner.
+  GEMINI_VOICE: z.string().default('Kore'),
   EXAMINER_MODE: z.enum(['mock', 'gemini']).optional(),
   PORT: z.coerce.number().default(3001),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),

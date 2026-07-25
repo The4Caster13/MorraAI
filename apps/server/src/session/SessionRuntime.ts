@@ -51,6 +51,12 @@ export class SessionRuntime {
   /** Set when the student ends the session before Part 3 has run its course. */
   private endedEarlyAt: Phase | null = null;
   private speech = new SpeechActivityTracker();
+  /**
+   * Whether the examiner has ever produced audible speech this session. Until
+   * it has, question text is shown regardless of mode — an examiner nobody can
+   * hear or read is not an exam.
+   */
+  private audioHasArrived = false;
 
   constructor(
     public readonly sessionId: string,
@@ -210,6 +216,7 @@ export class SessionRuntime {
         if (seg.isFinal) this.emitCompetence();
       },
       onExaminerAudio: (pcm16) => {
+        this.audioHasArrived = true;
         this.audio[phase].examiner.push(pcm16);
         this.emit({
           type: 'server:examinerAudioChunk',
@@ -232,8 +239,10 @@ export class SessionRuntime {
           })
           .catch((err) => console.error('transcript persist failed', err));
         // Withholding the text is only realistic when the student can hear the
-        // question instead. A silent examiner must always be readable.
-        if (this.showText || !this.examiner.speaksAloud) {
+        // question instead. If no audio has arrived — a mute Live model, a
+        // broken voice config — showing the text is the difference between a
+        // usable exam and a blank screen.
+        if (this.showText || !this.examiner.speaksAloud || !this.audioHasArrived) {
           this.emit({ type: 'server:questionText', text });
         }
       },

@@ -5,8 +5,12 @@ import { describe, expect, it } from 'vitest';
  * text. Kept as a named predicate so the mock-examiner case is pinned down:
  * a silent examiner whose text is also hidden is simply not there.
  */
-function shouldSendQuestionText(showText: boolean, speaksAloud: boolean): boolean {
-  return showText || !speaksAloud;
+function shouldSendQuestionText(
+  showText: boolean,
+  speaksAloud: boolean,
+  audioHasArrived = true,
+): boolean {
+  return showText || !speaksAloud || !audioHasArrived;
 }
 
 describe('examiner question visibility', () => {
@@ -27,5 +31,15 @@ describe('examiner question visibility', () => {
 
   it('shows text for a silent examiner with the toggle on', () => {
     expect(shouldSendQuestionText(true, false)).toBe(true);
+  });
+
+  it('falls back to text when a speaking examiner has sent no audio yet', () => {
+    // A Live model that transcribes but never synthesises would otherwise leave
+    // the student with a blank screen and no sound.
+    expect(shouldSendQuestionText(false, true, false)).toBe(true);
+  });
+
+  it('returns to hiding text once audio actually arrives', () => {
+    expect(shouldSendQuestionText(false, true, true)).toBe(false);
   });
 });
