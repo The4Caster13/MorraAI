@@ -30,6 +30,22 @@ try {
   process.exit(1);
 }
 
+// Warn about configuration that is fine locally but wrong once deployed.
+if (env.NODE_ENV === 'production') {
+  if (storageMode() === 'local') {
+    app.log.warn(
+      'Audio is being written to the container filesystem, which most hosts wipe on every ' +
+        'deploy and restart. Set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to keep recordings.',
+    );
+  }
+  if (!env.ACCESS_CODE) {
+    app.log.warn(
+      'ACCESS_CODE is not set, so anyone who finds this URL can start sessions against your ' +
+        'Gemini key. Set it unless the deployment is deliberately public.',
+    );
+  }
+}
+
 await app.listen({ port: env.PORT, host: '0.0.0.0' });
 app.log.info(
   `Morrai server ready — examiner: ${examinerMode()}, audio storage: ${

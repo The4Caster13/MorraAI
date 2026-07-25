@@ -7,6 +7,7 @@ import type {
   StimulusDto,
   TranscriptSegmentDto,
 } from '@morrai/shared';
+import { ACCESS_CODE_HEADER, getAccessCode } from './accessCode';
 
 /**
  * Builds a readable message from a failed response.
@@ -20,25 +21,35 @@ import type {
 export function describeHttpError(status: number, statusText: string, body: string): string {
   let detail = body.trim();
   let hint: string | undefined;
+  let code: string | undefined;
 
   if (detail.startsWith('{')) {
     try {
-      const parsed = JSON.parse(detail) as { error?: unknown; hint?: unknown };
+      const parsed = JSON.parse(detail) as { error?: unknown; hint?: unknown; code?: unknown };
       if (typeof parsed.error === 'string' && parsed.error) detail = parsed.error;
       if (typeof parsed.hint === 'string' && parsed.hint) hint = parsed.hint;
+      if (typeof parsed.code === 'string' && parsed.code) code = parsed.code;
     } catch {
       // Malformed JSON — fall through and show the raw body.
     }
   }
 
   const base = detail ? `${status}: ${detail}` : `${status} ${statusText || 'Request failed'}`;
-  return hint ? `${base}\n\n${hint}` : base;
+  // The machine-readable code is appended so callers can branch on it without a
+  // second channel; the access-code prompt keys off ACCESS_CODE_REQUIRED.
+  const withCode = code ? `${base} [${code}]` : base;
+  return hint ? `${withCode}\n\n${hint}` : withCode;
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const accessCode = getAccessCode();
   const res = await fetch(path, {
     ...init,
-    headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(accessCode ? { [ACCESS_CODE_HEADER]: accessCode } : {}),
+      ...(init?.headers ?? {}),
+    },
   });
 
   if (!res.ok) {

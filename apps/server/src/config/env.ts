@@ -71,6 +71,10 @@ const envSchema = z.object({
   // synthesise no audio until a voice is named.
   GEMINI_VOICE: z.string().default('Kore'),
   EXAMINER_MODE: z.enum(['mock', 'gemini']).optional(),
+  // Shared password guarding session creation. Unset means open, which is right
+  // for local development; on a public URL it is the only thing standing
+  // between a stranger and ~15 minutes of billable realtime audio per click.
+  ACCESS_CODE: optionalFilled(z.string().min(4)),
   PORT: z.coerce.number().default(3001),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   // Origin allowed to call the API in development, where Vite serves the SPA

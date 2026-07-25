@@ -11,6 +11,7 @@ import {
 } from '@morrai/shared';
 import { api } from '../../lib/api';
 import { ensureUserId, getStoredDisplayName, saveProfile } from '../../lib/profile';
+import { clearAccessCode, isAccessCodeError, saveAccessCode } from '../../lib/accessCode';
 import { THEME_CONTENT } from '../../lib/themeContent';
 import { useEntranceAnimation } from '../../hooks/useAnimations';
 import { gsap } from 'gsap';
@@ -40,6 +41,8 @@ export function PracticePage() {
   const [prepMinutes, setPrepMinutes] = useState(PREP_SECONDS_DEFAULT / 60);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [needsCode, setNeedsCode] = useState(false);
+  const [codeInput, setCodeInput] = useState('');
 
   const ref = useEntranceAnimation<HTMLDivElement>(() => {
     // fromTo + clearProps rather than gsap.from: `from` leaves the cards at
@@ -85,9 +88,24 @@ export function PracticePage() {
       });
       navigate(`/session/${session.id}/consent`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Could not start the session');
+      if (isAccessCodeError(err)) {
+        // A saved code that's now wrong would fail silently forever otherwise.
+        clearAccessCode();
+        setNeedsCode(true);
+        setError(null);
+      } else {
+        setError(err instanceof Error ? err.message : 'Could not start the session');
+      }
       setBusy(false);
     }
+  };
+
+  const submitAccessCode = async () => {
+    if (!codeInput.trim()) return;
+    saveAccessCode(codeInput);
+    setNeedsCode(false);
+    setCodeInput('');
+    await start();
   };
 
   return (
@@ -287,6 +305,37 @@ export function PracticePage() {
             );
           })}
         </div>
+
+        {needsCode && (
+          <div className="mt-8 rounded-2xl border border-slate-200 bg-slate-50 p-6">
+            <h2 className="mb-1 font-display text-lg font-bold text-slate-900">
+              Access code required
+            </h2>
+            <p className="mb-4 text-sm text-slate-600">
+              This app is invite-only while it's in testing. Enter the code you were given.
+            </p>
+            <form
+              className="flex flex-wrap gap-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                void submitAccessCode();
+              }}
+            >
+              <input
+                type="password"
+                value={codeInput}
+                onChange={(e) => setCodeInput(e.target.value)}
+                placeholder="Access code"
+                aria-label="Access code"
+                autoFocus
+                className="min-w-56 flex-1 rounded-xl border border-slate-300 px-4 py-2.5 text-sm outline-none focus:border-brand"
+              />
+              <Button type="submit" disabled={!codeInput.trim()}>
+                Continue
+              </Button>
+            </form>
+          </div>
+        )}
 
         {error && (
           <div className="mt-8">

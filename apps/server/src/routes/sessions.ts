@@ -13,6 +13,7 @@ import { assertTransition, InvalidTransitionError } from '../session/sessionMach
 import { disposeRuntime } from '../session/SessionRuntime.js';
 import { getStorageService } from '../storage/StorageService.js';
 import { toScoreDto, toSessionDto, toSessionSummaryDto } from './mappers.js';
+import { requireAccessCode } from './accessCode.js';
 
 const CONSENT_TEXT_VERSION = '2026-07-25.v1';
 
@@ -39,7 +40,7 @@ function requireOwner(
 }
 
 export const sessionRoutes: FastifyPluginAsync = async (app) => {
-  app.post('/api/sessions', async (req, reply) => {
+  app.post('/api/sessions', { preHandler: requireAccessCode }, async (req, reply) => {
     const parsed = createSessionRequestSchema.safeParse(req.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
     const { userId, mode, theme, stimulusId, prepSeconds } = parsed.data;
