@@ -1,5 +1,5 @@
 import { createReadStream, existsSync } from 'node:fs';
-import { dirname, join, normalize } from 'node:path';
+import { dirname, extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import Fastify, { type FastifyError } from 'fastify';
 import cors from '@fastify/cors';
@@ -11,6 +11,21 @@ import { userRoutes } from './routes/users.js';
 import { stimulusRoutes } from './routes/stimuli.js';
 import { sessionRoutes } from './routes/sessions.js';
 import { wsGateway } from './ws/gateway.js';
+
+/**
+ * Content types for stimulus images. Previously anything that wasn't an SVG was
+ * served as image/jpeg, which became wrong the moment the placeholders were
+ * replaced with PNGs — browsers usually sniff past it, but caches and stricter
+ * clients do not.
+ */
+const CONTENT_TYPES: Record<string, string> = {
+  '.svg': 'image/svg+xml',
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.webp': 'image/webp',
+  '.avif': 'image/avif',
+};
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
 const stimuliImageDir = join(repoRoot, 'data', 'stimuli', 'images');
@@ -78,7 +93,7 @@ export async function buildApp() {
     }
     const path = join(stimuliImageDir, file);
     if (!existsSync(path)) return reply.code(404).send({ error: 'Not found' });
-    const contentType = file.endsWith('.svg') ? 'image/svg+xml' : 'image/jpeg';
+    const contentType = CONTENT_TYPES[extname(file).toLowerCase()] ?? 'application/octet-stream';
     return reply.header('Content-Type', contentType).send(createReadStream(path));
   });
 

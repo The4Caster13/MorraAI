@@ -20,7 +20,15 @@ export function LandingPage() {
     if (!hash) return;
     const el = document.getElementById(hash.slice(1));
     if (!el) return;
-    const id = window.setTimeout(() => el.scrollIntoView({ behavior: 'smooth' }), 0);
+    // Fires on a timer, so anything thrown here escapes React and surfaces as an
+    // unhandled exception rather than a render error. scrollIntoView is absent
+    // in jsdom and in some older browsers; failing to scroll is not worth
+    // taking the page down for.
+    const id = window.setTimeout(() => {
+      if (typeof el.scrollIntoView === 'function') {
+        el.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 0);
     return () => window.clearTimeout(id);
   }, [hash]);
 

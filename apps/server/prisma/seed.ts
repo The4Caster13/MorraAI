@@ -52,6 +52,34 @@ async function main() {
       },
     });
   }
+
+  // Remove stimuli that are no longer in the manifest. Without this, an entry
+  // dropped or renamed upstream stays in the database and keeps being handed
+  // to students — pointing at an image file that no longer exists. Rows still
+  // referenced by a past session are kept, since deleting one would take that
+  // student's report with it.
+  const ids = manifest.map((e) => e.id);
+  const stale = await prisma.stimulus.findMany({
+    where: { id: { notIn: ids } },
+    select: { id: true },
+  });
+  const referencedRows = await prisma.session.findMany({ select: { stimulusId: true } });
+  const referenced = new Set(referencedRows.map((s) => s.stimulusId));
+
+  const orphaned = stale.map((s) => s.id).filter((id) => !referenced.has(id));
+  const inUse = stale.map((s) => s.id).filter((id) => referenced.has(id));
+
+  if (orphaned.length > 0) {
+    await prisma.stimulus.deleteMany({ where: { id: { in: orphaned } } });
+    console.log(`Removed ${orphaned.length} stimulus/stimuli no longer in the manifest.`);
+  }
+  if (inUse.length > 0) {
+    console.warn(
+      `${inUse.length} outdated stimulus/stimuli kept because past sessions reference them: ` +
+        `${inUse.join(', ')}. Their image files may no longer exist.`,
+    );
+  }
+
   console.log(`Seeded ${manifest.length} stimuli.`);
 }
 
