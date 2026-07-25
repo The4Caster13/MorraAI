@@ -1,8 +1,17 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
+<<<<<<< Updated upstream
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { env, storageMode } from '../config/env.js';
+=======
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { createClient, type SupabaseClient } from '@supabase/supabase-js';
+import { env, storageMode } from '../config/env.js';
+
+const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
+>>>>>>> Stashed changes
 
 /**
  * Session audio storage.
@@ -31,6 +40,7 @@ export function audioPath(sessionId: string, phase: string, speaker: string): st
 class SupabaseStorageService implements StorageService {
   private client: SupabaseClient;
 
+<<<<<<< Updated upstream
   constructor(private bucket: string) {
     // Only constructed when storageMode() reports 'supabase', which is exactly
     // the condition that both of these are set.
@@ -38,6 +48,14 @@ class SupabaseStorageService implements StorageService {
       throw new Error('SupabaseStorageService requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY');
     }
     this.client = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
+=======
+  constructor(
+    private bucket: string,
+    supabaseUrl: string,
+    supabaseServiceRoleKey: string,
+  ) {
+    this.client = createClient(supabaseUrl, supabaseServiceRoleKey, {
+>>>>>>> Stashed changes
       auth: { persistSession: false, autoRefreshToken: false },
     });
   }
@@ -69,6 +87,7 @@ class SupabaseStorageService implements StorageService {
   }
 }
 
+<<<<<<< Updated upstream
 /** Repo root — `apps/server/src/storage` → four levels up. */
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
 const localAudioRoot = path.join(repoRoot, 'storage');
@@ -96,17 +115,66 @@ class LocalDiskStorageService implements StorageService {
   async deleteSessionAudio(sessionId: string): Promise<void> {
     const dir = this.resolve(path.join('sessions', sessionId.toLowerCase()));
     await rm(dir, { recursive: true, force: true });
+=======
+/**
+ * Local-disk backend for development against a local Postgres, where there's
+ * no Supabase project to hold audio either. Writes under `storage/audio/` at
+ * the repo root (gitignored) — never used in production.
+ */
+class LocalStorageService implements StorageService {
+  constructor(private baseDir: string) {}
+
+  private fullPath(path: string): string {
+    return join(this.baseDir, path);
+  }
+
+  async uploadAudio(path: string, wav: Buffer): Promise<void> {
+    const full = this.fullPath(path);
+    await mkdir(dirname(full), { recursive: true });
+    await writeFile(full, wav);
+  }
+
+  async downloadAudio(path: string): Promise<Buffer> {
+    return readFile(this.fullPath(path));
+  }
+
+  async deleteSessionAudio(sessionId: string): Promise<void> {
+    await rm(this.fullPath(`sessions/${sessionId.toLowerCase()}`), {
+      recursive: true,
+      force: true,
+    });
+>>>>>>> Stashed changes
   }
 }
 
 let instance: StorageService | null = null;
 
 export function getStorageService(): StorageService {
+<<<<<<< Updated upstream
   if (!instance) {
     instance =
       storageMode() === 'supabase'
         ? new SupabaseStorageService(env.SUPABASE_AUDIO_BUCKET)
         : new LocalDiskStorageService();
+=======
+  if (instance) return instance;
+  if (storageMode() === 'local') {
+    const baseDir = env.LOCAL_AUDIO_DIR
+      ? join(process.cwd(), env.LOCAL_AUDIO_DIR)
+      : join(repoRoot, 'storage', 'audio');
+    instance = new LocalStorageService(baseDir);
+  } else {
+    if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
+      throw new Error(
+        'SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required when STORAGE_MODE=supabase',
+      );
+    }
+    instance = new SupabaseStorageService(
+      env.SUPABASE_AUDIO_BUCKET,
+      env.SUPABASE_URL,
+      env.SUPABASE_SERVICE_ROLE_KEY,
+    );
+>>>>>>> Stashed changes
   }
   return instance;
 }

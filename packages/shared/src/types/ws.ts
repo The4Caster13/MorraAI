@@ -17,6 +17,10 @@ export const wsClientMessageSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('client:requestRephrase') }),
   z.object({ type: z.literal('client:notepadUpdate'), bullets: notepadBulletsSchema }),
   z.object({ type: z.literal('client:skipPrep') }),
+  // "I have finished presenting" — advances Part 1 to Part 2. Idempotent, so a
+  // double-press cannot be mistaken for a request to abandon the exam.
+  z.object({ type: z.literal('client:finishPresentation') }),
+  // Deliberately abandon (or, in Part 3, close and score) the whole session.
   z.object({ type: z.literal('client:endSessionEarly') }),
   z.object({ type: z.literal('client:toggleTextMode'), show: z.boolean() }),
   // Mock-mode only: lets a developer "speak" by typing when no STT backend exists.

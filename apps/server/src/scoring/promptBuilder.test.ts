@@ -33,6 +33,7 @@ const baseInput: ScoreSessionInput = {
   },
   mode: 'exam',
   sttConfidenceSummary: { avg: 0.9, lowConfidenceSegmentIds: [] },
+  audio: [],
 };
 
 describe('buildScoringPrompt', () => {
@@ -111,5 +112,98 @@ describe('scoring response schema', () => {
       uncertaintyNote: null,
     };
     expect(scoringResponseSchema.safeParse(bad).success).toBe(false);
+  });
+});
+
+describe('delivery assessment from audio', () => {
+  const withAudio: ScoreSessionInput = {
+    ...baseInput,
+    audio: [
+      { phase: 'PART1', wav: Buffer.alloc(16), durationMs: 210_000 },
+      { phase: 'PART2', wav: Buffer.alloc(16), durationMs: 240_000 },
+    ],
+  };
+
+  it('asks the model to listen and transcribe when recordings are supplied', () => {
+    const prompt = buildScoringPrompt(withAudio);
+    expect(prompt).toContain('ENREGISTREMENTS FOURNIS');
+    expect(prompt).toMatch(/transcris/i);
+    expect(prompt).toContain('Partie 1 — présentation du stimulus');
+    expect(prompt).toContain('Partie 2 — discussion du stimulus');
+  });
+
+  it('lists each recording with its duration', () => {
+    const prompt = buildScoringPrompt(withAudio);
+    expect(prompt).toContain('210 s');
+    expect(prompt).toContain('240 s');
+  });
+
+  it('requests the delivery dimensions Criterion A needs', () => {
+    const prompt = buildScoringPrompt(withAudio);
+    for (const aspect of ['pronunciation', 'intonation', 'fluency', 'pace']) {
+      expect(prompt).toContain(aspect);
+    }
+    // Criterion A must be justified on both language and how it sounded.
+    expect(prompt).toMatch(/CRITÈRE A doit s'appuyer à la fois sur la langue/);
+  });
+
+  it('forbids inventing delivery observations when there is no audio', () => {
+    const prompt = buildScoringPrompt(baseInput);
+    expect(prompt).toContain("AUCUN ENREGISTREMENT N'EST DISPONIBLE");
+    expect(prompt).toMatch(/N'invente jamais d'observation/);
+    expect(prompt).toMatch(/audioAssessed à false/);
+  });
+
+  it('tells the model the transcript may be wrong and the audio is authoritative', () => {
+    const prompt = buildScoringPrompt(withAudio);
+    expect(prompt).toMatch(/l'audio fait foi/);
+  });
+
+  it('asks for a reconstruction when live transcription produced nothing', () => {
+    const prompt = buildScoringPrompt({ ...withAudio, fullTranscript: [] });
+    expect(prompt).toMatch(/Reconstitue la conversation à partir de l'audio/);
+  });
+});
+
+describe('delivery response schema', () => {
+  const valid = {
+    transcribedTurns: [{ phase: 'PART1', text: 'Sur cette image je vois...' }],
+    delivery: {
+      audioAssessed: true,
+      pronunciation: 'Le "r" français est bien articulé.',
+      intonation: 'Intonation montante correcte sur les questions.',
+      fluency: 'Quelques hésitations « euh » en partie 2.',
+      pace: 'Débit adapté.',
+      observations: ['« ingéniosité » prononcé avec hésitation'],
+    },
+    criterionA: { mark: 8, band: 'Proficient', justification: 'x', evidenceQuotes: ['q'] },
+    criterionB1: { mark: 4, band: 'Proficient', justification: 'x', evidenceQuotes: ['q'] },
+    criterionB2: { mark: 4, band: 'Proficient', justification: 'x', evidenceQuotes: ['q'] },
+    criterionC: { mark: 4, band: 'Proficient', justification: 'x', evidenceQuotes: ['q'] },
+    strengths: ['a', 'b', 'c'],
+    priorities: ['a', 'b', 'c'],
+    drills: ['a'],
+    uncertaintyNote: null,
+  };
+
+  it('accepts a full audio-based response', () => {
+    expect(scoringResponseSchema.safeParse(valid).success).toBe(true);
+  });
+
+  it('requires every delivery dimension to be filled', () => {
+    for (const field of ['pronunciation', 'intonation', 'fluency', 'pace'] as const) {
+      const bad = { ...valid, delivery: { ...valid.delivery, [field]: '' } };
+      expect(scoringResponseSchema.safeParse(bad).success, `${field} may not be blank`).toBe(false);
+    }
+  });
+
+  it('rejects a response with no delivery section at all', () => {
+    const { delivery: _omitted, ...bad } = valid;
+    expect(scoringResponseSchema.safeParse(bad).success).toBe(false);
+  });
+
+  it('declares delivery and transcript as required in the Gemini schema', () => {
+    expect(scoringResponseJsonSchema.required).toContain('delivery');
+    expect(scoringResponseJsonSchema.required).toContain('transcribedTurns');
   });
 });

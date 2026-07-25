@@ -58,8 +58,20 @@ export const criterionResultSchema = z.object({
 });
 export type CriterionResult = z.infer<typeof criterionResultSchema>;
 
+/** How the student sounded — assessed from the recording, not the transcript. */
+export const deliverySchema = z.object({
+  audioAssessed: z.boolean(),
+  pronunciation: z.string(),
+  intonation: z.string(),
+  fluency: z.string(),
+  pace: z.string(),
+  observations: z.array(z.string()),
+});
+export type DeliveryDto = z.infer<typeof deliverySchema>;
+
 export const scoreSchema = z.object({
   sessionId: z.string(),
+  delivery: deliverySchema.nullable(),
   criterionA: criterionResultSchema,
   criterionB1: criterionResultSchema,
   criterionB2: criterionResultSchema,

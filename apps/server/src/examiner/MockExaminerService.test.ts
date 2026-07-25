@@ -79,6 +79,7 @@ describe('MockExaminerService', () => {
       stimulus,
       mode: 'exam',
       sttConfidenceSummary: { avg: 0.9, lowConfidenceSegmentIds: [] },
+      audio: [],
     });
     for (const c of [
       result.criterionA,

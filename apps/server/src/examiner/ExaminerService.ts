@@ -59,11 +59,19 @@ export interface CriterionScore {
   evidenceQuotes: string[];
 }
 
+/** A stored recording of one exam phase, used to assess delivery. */
+export interface SessionAudio {
+  phase: Phase;
+  wav: Buffer;
+  durationMs: number;
+}
+
 export interface ScoreSessionInput {
   fullTranscript: TranscriptSegmentDto[];
   stimulus: StimulusContext;
   mode: SessionMode;
   sttConfidenceSummary: { avg: number | null; lowConfidenceSegmentIds: string[] };
+<<<<<<< Updated upstream
   /**
    * Measured delivery. A transcript cannot show pace, hesitation or pausing,
    * all of which Criterion A explicitly assesses — without this the model is
@@ -79,6 +87,33 @@ export interface ScoreSessionInput {
     subordinationRate: number;
     lexicalDiversity: number;
   };
+=======
+  /** The student's own recordings, oldest phase first. May be empty. */
+  audio: SessionAudio[];
+}
+
+/**
+ * How the student sounded, as opposed to what they said.
+ *
+ * Criterion A covers pronunciation, intonation and fluency, none of which can
+ * be judged from a transcript — so this comes from the recordings themselves.
+ */
+export interface DeliveryAssessment {
+  /** False when no usable recording reached the scorer; fields then say so. */
+  audioAssessed: boolean;
+  pronunciation: string;
+  intonation: string;
+  fluency: string;
+  pace: string;
+  /** Concrete moments heard in the recording, e.g. a mispronounced word. */
+  observations: string[];
+}
+
+/** A student utterance transcribed from the recording by the scoring model. */
+export interface TranscribedTurn {
+  phase: Phase;
+  text: string;
+>>>>>>> Stashed changes
 }
 
 export interface ScoreSessionResult {
@@ -86,6 +121,12 @@ export interface ScoreSessionResult {
   criterionB1: CriterionScore;
   criterionB2: CriterionScore;
   criterionC: CriterionScore;
+  delivery: DeliveryAssessment;
+  /**
+   * What the model heard the student say. Used to fill in the transcript when
+   * live speech-to-text produced nothing.
+   */
+  transcribedTurns: TranscribedTurn[];
   strengths: [string, string, string];
   priorities: [string, string, string];
   drills: string[];

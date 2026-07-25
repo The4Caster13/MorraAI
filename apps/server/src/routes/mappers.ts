@@ -1,6 +1,6 @@
 import type { Prisma } from '@prisma/client';
 import type { ScoreDto, SessionDto, SessionSummaryDto, StimulusDto } from '@parlons/shared';
-import { DISCLAIMER_FR, notepadBulletsSchema } from '@parlons/shared';
+import { deliverySchema, DISCLAIMER_FR, notepadBulletsSchema } from '@parlons/shared';
 
 type StimulusRow = Prisma.StimulusGetPayload<object>;
 type SessionRow = Prisma.SessionGetPayload<{ include: { stimulus: true } }>;
@@ -61,8 +61,11 @@ export function toSessionSummaryDto(s: SessionWithScore): SessionSummaryDto {
 
 export function toScoreDto(score: ScoreRow): ScoreDto {
   const rationale = score.rationaleJson as Record<string, unknown>;
+  // Sessions scored before delivery assessment existed simply have no entry.
+  const delivery = deliverySchema.safeParse(rationale.delivery);
   return {
     sessionId: score.sessionId,
+    delivery: delivery.success ? delivery.data : null,
     criterionA: rationale.A as ScoreDto['criterionA'],
     criterionB1: rationale.B1 as ScoreDto['criterionB1'],
     criterionB2: rationale.B2 as ScoreDto['criterionB2'],

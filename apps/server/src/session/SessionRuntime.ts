@@ -13,7 +13,7 @@ import {
   type CompetenceSnapshot,
 } from '../analysis/competence.js';
 import { sessionRepo, transcriptRepo } from '../db/repositories/index.js';
-import { assertTransition, phaseForStatus } from './sessionMachine.js';
+import { assertTransition, isTerminal, phaseForStatus } from './sessionMachine.js';
 import { audioPath, getStorageService } from '../storage/StorageService.js';
 import { pcmDurationMs, pcmToWav } from '../storage/pcmToWav.js';
 import { scoreAndPersist } from '../scoring/scoreSession.js';
@@ -95,76 +95,149 @@ export class SessionRuntime {
     return Date.now() - this.sessionStartMs;
   }
 
-  private async setStatus(next: SessionStatus) {
+  /**
+   * Runs state-machine work one item at a time.
+   *
+   * Transitions span multiple awaited DB writes, so without this a second event
+   * (a double-click, or the phase timer firing while the student ends the phase
+   * manually) interleaves and drives the session somewhere the first operation
+   * no longer expects — e.g. one path sets ABANDONED while another is still
+   * mid-way through advancing to PART2_QA.
+   */
+  private chain: Promise<unknown> = Promise.resolve();
+
+  /**
+   * Re-reads the status after an await. Called as a method so TypeScript does
+   * not narrow it to the value an earlier guard proved — `setStatus` mutates it.
+   */
+  private statusNow(): SessionStatus {
+    return this.status;
+  }
+
+  private serialize<T>(fn: () => Promise<T>): Promise<T | undefined> {
+    const run = this.chain.then(
+      () => fn(),
+      () => fn(),
+    );
+    this.chain = run.catch(() => undefined);
+    return run;
+  }
+
+  /**
+   * The in-memory `status` is already what the live WS gateway trusts (see
+   * `syncStatusIfIdle`), so it — not the DB row — is the real-time source of
+   * truth for a connected client. The DB write exists only for durability
+   * (history, resuming a lookup after this process restarts), so it must not
+   * gate the UI on a network round trip. Not `async`: the transition and the
+   * client notification both happen synchronously; the persistence write is
+   * fired in the background and merely logged if it fails.
+   *
+   * If the process crashes between the in-memory transition and the write
+   * landing, the persisted row can lag one step behind — acceptable, since an
+   * in-flight session already isn't resumable across a restart (see index.ts).
+   */
+  private setStatus(next: SessionStatus): void {
     assertTransition(this.status, next);
     this.status = next;
     const phase = phaseForStatus(next);
-    await sessionRepo.update(this.sessionId, {
-      status: next,
-      currentPhase: phase,
-      ...(next === 'PREP' ? { startedAt: new Date() } : {}),
-      ...(next === 'COMPLETE' || next === 'ABANDONED' || next === 'ERROR'
-        ? { endedAt: new Date() }
-        : {}),
-    });
     this.emit({ type: 'server:phaseChanged', phase, status: next });
+    sessionRepo
+      .update(this.sessionId, {
+        status: next,
+        currentPhase: phase,
+        ...(next === 'PREP' ? { startedAt: new Date() } : {}),
+        ...(next === 'COMPLETE' || next === 'ABANDONED' || next === 'ERROR'
+          ? { endedAt: new Date() }
+          : {}),
+      })
+      .catch((err) => {
+        console.error(`failed to persist status ${next} for session ${this.sessionId}`, err);
+      });
   }
 
   // ---- Prep ----
 
   async startPrep() {
-    await this.setStatus('PREP');
-    this.sessionStartMs = Date.now();
-    this.startCountdown(this.prepSecondsAllotted * 1000, null, () => void this.startPart1());
+    await this.serialize(async () => {
+      if (this.status !== 'CONSENTED') return;
+      this.setStatus('PREP');
+      this.sessionStartMs = Date.now();
+      this.startCountdown(this.prepSecondsAllotted * 1000, null, () =>
+        void this.serialize(() => this.startPart1Locked()),
+      );
+    });
   }
 
   async skipPrep() {
-    if (this.mode !== 'practice' || this.status !== 'PREP') return;
-    this.stopCountdown();
-    await this.startPart1();
+    await this.serialize(async () => {
+      if (this.mode !== 'practice' || this.status !== 'PREP') return;
+      await this.startPart1Locked();
+    });
   }
 
   // ---- Part 1 ----
 
   async startPart1() {
-    if (this.status !== 'PREP') return;
-    this.stopCountdown();
-    await this.setStatus('PART1_INTRO');
-    await this.openExaminerForPhase('PART1');
-    await this.setStatus('PART1_RECORDING');
-    this.startCountdown(PHASE_CAPS_MS.PART1, 'PART1', () => void this.hardStopPart1());
+    await this.serialize(() => this.startPart1Locked());
   }
 
-  private async hardStopPart1() {
+  private async startPart1Locked() {
+    if (this.status !== 'PREP') return;
+    this.stopCountdown();
+    this.setStatus('PART1_INTRO');
+    await this.openExaminerForPhase('PART1');
+    // Re-check: the session may have been abandoned while the examiner connected.
+    if (this.statusNow() !== 'PART1_INTRO') return;
+    this.setStatus('PART1_RECORDING');
+    this.startCountdown(PHASE_CAPS_MS.PART1, 'PART1', () =>
+      void this.serialize(() => this.hardStopPart1Locked()),
+    );
+  }
+
+  private async hardStopPart1Locked() {
     if (this.status !== 'PART1_RECORDING') return;
     this.emit({ type: 'server:part1HardStop' });
     this.examinerSession?.requestClosing();
-    await this.endPart1();
+    await this.endPart1Locked();
   }
 
-  async endPart1() {
+  /**
+   * "I have finished presenting." Advances Part 1 to Part 2 and does nothing in
+   * any other phase, so repeat presses are harmless.
+   */
+  async finishPresentation() {
+    await this.serialize(() => this.endPart1Locked());
+  }
+
+  private async endPart1Locked() {
     if (this.status !== 'PART1_RECORDING') return;
     this.stopCountdown();
-    await this.setStatus('PART1_CLOSING');
+    this.setStatus('PART1_CLOSING');
     await this.closePhase('PART1');
-    await this.startQaPhase('PART2');
+    if (this.statusNow() !== 'PART1_CLOSING') return;
+    await this.startQaPhaseLocked('PART2');
   }
 
   // ---- Parts 2 & 3 ----
 
-  private async startQaPhase(phase: 'PART2' | 'PART3') {
-    await this.setStatus(phase === 'PART2' ? 'PART2_QA' : 'PART3_QA');
+  private async startQaPhaseLocked(phase: 'PART2' | 'PART3') {
+    this.setStatus(phase === 'PART2' ? 'PART2_QA' : 'PART3_QA');
     await this.openExaminerForPhase(phase);
-    this.startCountdown(PHASE_CAPS_MS[phase], phase, () => void this.endQaPhase(phase));
+    if (phaseForStatus(this.status) !== phase) return;
+    this.startCountdown(PHASE_CAPS_MS[phase], phase, () =>
+      void this.serialize(() => this.endQaPhaseLocked(phase)),
+    );
   }
 
-  private async endQaPhase(phase: 'PART2' | 'PART3') {
+  private async endQaPhaseLocked(phase: 'PART2' | 'PART3') {
+    if (phaseForStatus(this.status) !== phase) return;
     this.stopCountdown();
     await this.closePhase(phase);
+    if (phaseForStatus(this.status) !== phase) return;
     if (phase === 'PART2') {
-      await this.startQaPhase('PART3');
+      await this.startQaPhaseLocked('PART3');
     } else {
-      await this.finishAndScore();
+      await this.finishAndScoreLocked();
     }
   }
 
@@ -316,10 +389,32 @@ export class SessionRuntime {
     await sessionRepo.update(this.sessionId, { notepadBullets: bullets });
   }
 
-  async endSessionEarly() {
+  /**
+   * The student deliberately ended the session. What that means depends on the
+   * phase, so the decision is made inside the lock — deciding it in the gateway
+   * read a status that could already be stale by the time the work ran.
+   */
+  async requestEnd() {
+    await this.serialize(async () => {
+      if (isTerminal(this.status) || this.status === 'SCORING') return;
+
+      // Part 3 is the last phase, so finishing it is a complete exam to score.
+      if (this.status === 'PART3_QA') {
+        this.stopCountdown();
+        await this.closePhase('PART3');
+        await this.finishAndScoreLocked();
+        return;
+      }
+      await this.abandonLocked();
+    });
+  }
+
+  private async abandonLocked() {
+    if (isTerminal(this.status)) return;
     this.stopCountdown();
     const phase = phaseForStatus(this.status);
     if (phase) await this.closePhase(phase);
+<<<<<<< Updated upstream
 
     // Score from any Q&A phase. A student who stops after Part 2 has still
     // produced a presentation and a discussion — enough for a useful report,
@@ -331,24 +426,29 @@ export class SessionRuntime {
     }
 
     await this.setStatus('ABANDONED');
+=======
+    if (isTerminal(this.status)) return;
+    this.setStatus('ABANDONED');
+>>>>>>> Stashed changes
     await this.cleanup();
   }
 
   // ---- Scoring ----
 
-  private async finishAndScore() {
-    await this.setStatus('SCORING');
+  private async finishAndScoreLocked() {
+    if (isTerminal(this.status) || this.status === 'SCORING') return;
+    this.setStatus('SCORING');
     try {
       await scoreAndPersist(this.sessionId, this.stimulus, this.mode, this.examiner, {
         lowConfidenceSegments: this.lowConfidenceSegments,
         endedEarlyAt: this.endedEarlyAt,
         delivery: this.competence().delivery,
       });
-      await this.setStatus('COMPLETE');
+      this.setStatus('COMPLETE');
       this.emit({ type: 'server:sessionComplete', sessionId: this.sessionId });
     } catch (err) {
       console.error('scoring failed', err);
-      await this.setStatus('ERROR');
+      this.setStatus('ERROR');
       this.emit({
         type: 'server:error',
         code: 'SCORING_FAILED',

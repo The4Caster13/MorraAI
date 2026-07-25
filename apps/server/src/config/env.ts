@@ -45,14 +45,27 @@ const connectionString = (name: string) =>
     });
 
 const envSchema = z.object({
+<<<<<<< Updated upstream
   DATABASE_URL: connectionString('DATABASE_URL'),
   DIRECT_URL: connectionString('DIRECT_URL').optional(),
   // Optional: audio replay is stored in Supabase when configured, on local disk
   // otherwise. Nothing else depends on these.
   SUPABASE_URL: optionalFilled(z.string().url()),
   SUPABASE_SERVICE_ROLE_KEY: optionalFilled(z.string().min(1)),
+=======
+  DATABASE_URL: z.string().min(1),
+  DIRECT_URL: z.string().min(1).optional(),
+  // Optional: absent entirely in local-Postgres dev, where audio is written to
+  // disk instead. See storageMode() below.
+  SUPABASE_URL: z.string().url().optional(),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1).optional(),
+>>>>>>> Stashed changes
   SUPABASE_AUDIO_BUCKET: z.string().default('session-audio'),
+  STORAGE_MODE: z.enum(['local', 'supabase']).optional(),
+  // Only read when storageMode() resolves to 'local'.
+  LOCAL_AUDIO_DIR: z.string().optional(),
   GEMINI_API_KEY: z.string().optional(),
+<<<<<<< Updated upstream
   // Current Live API preview model (released 2026-03-11, no shutdown announced).
   // Fallback if it errors: gemini-2.5-flash-native-audio-preview-12-2025.
   // Note that gemini-live-2.5-flash-preview and gemini-2.0-flash-live-001 were
@@ -62,6 +75,14 @@ const envSchema = z.object({
   GEMINI_SCORING_MODEL: z.string().default('gemini-3.5-flash'),
   // Prebuilt Live voice. Kore is a clear, neutral choice for an examiner.
   GEMINI_VOICE: z.string().default('Kore'),
+=======
+  GEMINI_LIVE_MODEL: z.string().default('gemini-2.5-flash-native-audio-preview-09-2025'),
+  // 2.5-era models (including the "-latest" alias, which still resolves to
+  // 2.5-flash) are sunset for this project's API key — confirmed directly
+  // against the account, not merely undocumented. Use the newest generally
+  // available flash model instead.
+  GEMINI_SCORING_MODEL: z.string().default('gemini-3.5-flash'),
+>>>>>>> Stashed changes
   EXAMINER_MODE: z.enum(['mock', 'gemini']).optional(),
   PORT: z.coerce.number().default(3001),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -89,6 +110,11 @@ export function examinerMode(e: Env = env): 'mock' | 'gemini' {
   return e.GEMINI_API_KEY ? 'gemini' : 'mock';
 }
 
+<<<<<<< Updated upstream
 export function storageMode(e: Env = env): 'supabase' | 'local' {
+=======
+export function storageMode(e: Env = env): 'local' | 'supabase' {
+  if (e.STORAGE_MODE) return e.STORAGE_MODE;
+>>>>>>> Stashed changes
   return e.SUPABASE_URL && e.SUPABASE_SERVICE_ROLE_KEY ? 'supabase' : 'local';
 }

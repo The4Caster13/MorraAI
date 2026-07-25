@@ -103,6 +103,7 @@ export class MockExaminerService implements ExaminerService {
   }
 
   async scoreSession(input: ScoreSessionInput): Promise<ScoreSessionResult> {
+    const heardAudio = input.audio.length > 0;
     const studentSegments = input.fullTranscript.filter((s) => s.speaker === 'STUDENT');
     const firstQuote = studentSegments[0]?.text ?? '(aucune transcription disponible)';
     const midQuote = studentSegments[Math.floor(studentSegments.length / 2)]?.text ?? firstQuote;
@@ -135,6 +136,20 @@ export class MockExaminerService implements ExaminerService {
         justification: `Évaluation fictive (mode mock). Exemple cité : « ${firstQuote} »`,
         evidenceQuotes: [firstQuote],
       },
+      // Mock mode has no speech model, so it never claims to have listened.
+      delivery: {
+        audioAssessed: false,
+        pronunciation: "Non évaluée en mode mock : aucune analyse audio n'est effectuée.",
+        intonation: 'Non évaluée en mode mock.',
+        fluency: 'Non évaluée en mode mock.',
+        pace: 'Non évalué en mode mock.',
+        observations: heardAudio
+          ? [
+              `${input.audio.length} enregistrement(s) reçu(s) mais non analysés : ajoutez une clé GEMINI_API_KEY.`,
+            ]
+          : [],
+      },
+      transcribedTurns: [],
       strengths: [
         'Vous avez terminé la session complète — la régularité est la clé du progrès.',
         'Vous avez répondu aux questions dans les temps impartis.',

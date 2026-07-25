@@ -1,4 +1,4 @@
-import { GoogleGenAI, Modality, type Session } from '@google/genai';
+import { FileState, GoogleGenAI, Modality, type File, type Session } from '@google/genai';
 import { env } from '../config/env.js';
 import { buildScoringPrompt, scoringResponseJsonSchema, scoringResponseSchema } from '../scoring/promptBuilder.js';
 import type {
@@ -9,6 +9,11 @@ import type {
   ScoreSessionResult,
 } from './ExaminerService.js';
 
+const AUDIO_MIME = 'audio/wav';
+/** Uploaded audio is usually ready in a second or two; cap the wait at ~30 s. */
+const FILE_POLL_INTERVAL_MS = 1000;
+const FILE_POLL_ATTEMPTS = 30;
+
 /** Sentence-final punctuation, used to segment a long uninterrupted monologue. */
 const SENTENCE_END = /[.!?…]\s*$/;
 /** Don't cut on an early "M." or "etc." — wait for a reasonable chunk first. */
@@ -16,7 +21,7 @@ const MIN_SEGMENT_CHARS = 40;
 
 const PHASE_BRIEFS: Record<string, string> = {
   PART1:
-    "L'étudiant présente le stimulus visuel pendant 3 à 4 minutes. Écoute sans interrompre. N'interviens que si on te le demande explicitement.",
+    "L'étudiant présente le stimulus visuel pendant 10 minutes. Écoute sans interrompre. N'interviens que si on te le demande explicitement.",
   PART2:
     "Tu poses des questions sur la présentation et le stimulus. Chaque question doit reprendre quelque chose que l'étudiant vient de dire.",
   PART3:
@@ -304,34 +309,106 @@ export class GeminiExaminerService implements ExaminerService {
     return liveSession;
   }
 
-  async scoreSession(input: ScoreSessionInput): Promise<ScoreSessionResult> {
-    const prompt = buildScoringPrompt(input);
-    const response = await this.ai.models.generateContent({
-      model: env.GEMINI_SCORING_MODEL,
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        responseSchema: scoringResponseJsonSchema as never,
-      },
-    });
+  /**
+   * Uploads the phase recordings via the Files API and waits for them to become
+   * usable. Inline data caps out at 20 MB and a full exam of 16 kHz PCM runs to
+   * roughly 30 MB, so the upload path is the only one that fits a whole session.
+   *
+   * Returns the parts to send plus the file names to clean up afterwards.
+   */
+  private async uploadAudio(input: ScoreSessionInput) {
+    const parts: Array<{ fileData: { fileUri: string; mimeType: string } }> = [];
+    const uploadedNames: string[] = [];
 
-    const text = response.text;
-    if (!text) throw new Error('Gemini returned an empty scoring response');
+    for (const clip of input.audio) {
+      const uploaded = await this.ai.files.upload({
+        file: new Blob([new Uint8Array(clip.wav)], { type: AUDIO_MIME }),
+        config: { mimeType: AUDIO_MIME, displayName: `${clip.phase}-student.wav` },
+      });
+      if (uploaded.name) uploadedNames.push(uploaded.name);
 
-    const parsed = scoringResponseSchema.safeParse(JSON.parse(text));
-    if (!parsed.success) {
-      throw new Error(`Scoring response failed validation: ${parsed.error.message}`);
+      const ready = await this.waitForActive(uploaded);
+      if (!ready?.uri) continue;
+      parts.push({ fileData: { fileUri: ready.uri, mimeType: ready.mimeType ?? AUDIO_MIME } });
     }
-    const d = parsed.data;
-    return {
-      criterionA: d.criterionA,
-      criterionB1: d.criterionB1,
-      criterionB2: d.criterionB2,
-      criterionC: d.criterionC,
-      strengths: d.strengths as [string, string, string],
-      priorities: d.priorities as [string, string, string],
-      drills: d.drills,
-      uncertaintyNote: d.uncertaintyNote,
-    };
+    return { parts, uploadedNames };
+  }
+
+  private async waitForActive(file: File): Promise<File | null> {
+    let current = file;
+    for (let i = 0; i < FILE_POLL_ATTEMPTS; i++) {
+      if (current.state === FileState.ACTIVE) return current;
+      if (current.state === FileState.FAILED) return null;
+      await new Promise((r) => setTimeout(r, FILE_POLL_INTERVAL_MS));
+      if (!current.name) return null;
+      current = await this.ai.files.get({ name: current.name });
+    }
+    // Still processing after the budget: score without this clip rather than hang.
+    return current.state === FileState.ACTIVE ? current : null;
+  }
+
+  private async deleteUploads(names: string[]) {
+    await Promise.all(
+      names.map((name) =>
+        this.ai.files.delete({ name }).catch((err) => {
+          console.warn(`could not delete uploaded audio ${name}`, err);
+        }),
+      ),
+    );
+  }
+
+  async scoreSession(input: ScoreSessionInput): Promise<ScoreSessionResult> {
+    let audioParts: Array<{ fileData: { fileUri: string; mimeType: string } }> = [];
+    let uploadedNames: string[] = [];
+
+    try {
+      ({ parts: audioParts, uploadedNames } = await this.uploadAudio(input));
+    } catch (err) {
+      // A failed upload must not lose the whole report — fall back to text-only
+      // scoring, which the prompt then flags as unable to judge delivery.
+      console.error('audio upload for scoring failed; scoring from transcript only', err);
+    }
+
+    try {
+      // The prompt is built from what actually reached the model, so a failed
+      // upload cannot leave it claiming to have heard recordings.
+      const prompt = buildScoringPrompt(
+        audioParts.length > 0 ? input : { ...input, audio: [] },
+      );
+
+      const response = await this.ai.models.generateContent({
+        model: env.GEMINI_SCORING_MODEL,
+        contents: [{ role: 'user', parts: [...audioParts, { text: prompt }] }],
+        config: {
+          responseMimeType: 'application/json',
+          responseSchema: scoringResponseJsonSchema as never,
+        },
+      });
+
+      const text = response.text;
+      if (!text) throw new Error('Gemini returned an empty scoring response');
+
+      const parsed = scoringResponseSchema.safeParse(JSON.parse(text));
+      if (!parsed.success) {
+        throw new Error(`Scoring response failed validation: ${parsed.error.message}`);
+      }
+      const d = parsed.data;
+
+      return {
+        criterionA: d.criterionA,
+        criterionB1: d.criterionB1,
+        criterionB2: d.criterionB2,
+        criterionC: d.criterionC,
+        // Never let the model claim it heard audio that was not sent.
+        delivery: { ...d.delivery, audioAssessed: d.delivery.audioAssessed && audioParts.length > 0 },
+        transcribedTurns: audioParts.length > 0 ? d.transcribedTurns : [],
+        strengths: d.strengths as [string, string, string],
+        priorities: d.priorities as [string, string, string],
+        drills: d.drills,
+        uncertaintyNote: d.uncertaintyNote,
+      };
+    } finally {
+      await this.deleteUploads(uploadedNames);
+    }
   }
 }

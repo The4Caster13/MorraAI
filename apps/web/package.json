@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@parlons/shared": "*",
+    "gsap": "^3.15.0",
+    "lucide-react": "^1.26.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-router-dom": "^6.28.1",
@@ -22,6 +24,7 @@
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
+    "jsdom": "^27.0.1",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.17",
     "vite": "^6.0.7",
