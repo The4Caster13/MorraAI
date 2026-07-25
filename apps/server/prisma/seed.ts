@@ -2,6 +2,11 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PrismaClient } from '@prisma/client';
+import { loadEnvFiles } from '../src/config/loadEnvFiles.js';
+
+// This script is run directly by tsx, not by the Prisma CLI, so nothing else
+// populates DATABASE_URL for it.
+loadEnvFiles();
 
 const prisma = new PrismaClient();
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');

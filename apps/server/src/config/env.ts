@@ -1,5 +1,8 @@
-import 'dotenv/config';
 import { z } from 'zod';
+import { loadEnvFiles } from './loadEnvFiles.js';
+
+// Must run before the schema below is parsed.
+loadEnvFiles();
 
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1),
