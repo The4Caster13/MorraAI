@@ -23,22 +23,52 @@ const PHASE_BRIEFS: Record<string, string> = {
     "Tu élargis la conversation à d'autres thèmes du programme, en gardant un lien avec les intérêts que l'étudiant a montrés.",
 };
 
-function systemInstruction(params: OpenLiveSessionParams): string {
-  const est = params.competenceEstimate;
-  const level =
-    est === undefined
-      ? 'inconnu'
-      : est.A > 0.7
-        ? 'fort'
-        : est.A < 0.35
-          ? 'fragile'
-          : 'intermédiaire';
-  const difficulty =
-    level === 'fort'
-      ? "Pose des questions abstraites, comparatives ou hypothétiques qui invitent au conditionnel et au subjonctif."
-      : level === 'fragile'
-        ? "Pose des questions courtes et concrètes, au présent, et reformule volontiers si l'étudiant hésite."
-        : "Pose des questions claires mais qui invitent à développer, avec des exemples concrets.";
+/**
+ * How the examiner should pitch its questions at each measured level.
+ *
+ * The point of the adaptive loop is to give every student room to show their
+ * ceiling: a struggling student stops producing anything usable if the
+ * questions are abstract, and a strong one can't reach the top bands if never
+ * asked anything that needs a conditional or a subjunctive.
+ */
+const DIFFICULTY_BRIEFS: Record<string, string> = {
+  fort:
+    "Pousse cet étudiant : questions abstraites, comparatives ou hypothétiques qui appellent " +
+    "naturellement le conditionnel et le subjonctif (« Que feriez-vous si… », « Pensez-vous qu'il " +
+    "soit… », « En quoi cela diffère-t-il de… »). Demande-lui de justifier et de nuancer.",
+  intermédiaire:
+    "Questions claires qui invitent à développer : demande des exemples concrets, des raisons, " +
+    "une opinion personnelle. Relance sur un détail qu'il vient de mentionner plutôt que de " +
+    'changer de sujet.',
+  fragile:
+    "Questions courtes et concrètes, au présent, une idée à la fois. Reprends ses propres mots. " +
+    "Reformule spontanément s'il hésite longuement, sans jamais traduire ni corriger.",
+};
+
+export function systemInstruction(params: OpenLiveSessionParams): string {
+  const d = params.delivery;
+  const level = d?.level ?? 'intermédiaire';
+  const difficulty = DIFFICULTY_BRIEFS[level] ?? DIFFICULTY_BRIEFS.intermédiaire;
+
+  // Observed signals are stated plainly so the model can act on the specific
+  // weakness rather than a single opaque label.
+  const observations: string[] = [];
+  if (d) {
+    if (d.wordsPerMinute !== null) observations.push(`débit ≈ ${d.wordsPerMinute} mots/minute`);
+    if (d.pauseCount > 0) observations.push(`${d.pauseCount} pause(s) marquée(s)`);
+    if (d.fillerRate > 3) observations.push(`beaucoup d'hésitations (${d.fillerRate}/100 mots)`);
+    if (d.tenseVariety > 0) observations.push(`${d.tenseVariety} temps verbaux différents employés`);
+    if (d.subordinationRate > 3) observations.push('phrases complexes, subordination fréquente');
+  }
+
+  const adaptation =
+    level === 'fragile' && (d?.pauseCount ?? 0) > 4
+      ? "\nIMPORTANT : l'étudiant hésite beaucoup. Laisse-lui plus de temps, simplifie encore, et " +
+        'commence par une question très concrète sur ce qu’il voit.'
+      : level === 'fort' && (d?.tenseVariety ?? 0) >= 4
+        ? "\nIMPORTANT : l'étudiant maîtrise plusieurs temps. Ne te contente pas de questions " +
+          'descriptives — pousse vers l’hypothèse, la comparaison et le jugement personnel.'
+        : '';
 
   return `Tu es un examinateur d'entraînement pour l'oral individuel de français B (niveau moyen).
 
@@ -50,7 +80,10 @@ RÈGLES ABSOLUES :
 - Si l'étudiant demande une répétition, reformule plus simplement sans jamais traduire.
 
 PHASE ACTUELLE : ${params.phase}. ${PHASE_BRIEFS[params.phase]}
-NIVEAU ESTIMÉ DE L'ÉTUDIANT : ${level}. ${difficulty}
+
+NIVEAU MESURÉ DE L'ÉTUDIANT : ${level}.
+${observations.length > 0 ? `Signaux observés : ${observations.join(', ')}.` : ''}
+${difficulty}${adaptation}
 
 STIMULUS VISUEL : « ${params.stimulus.captionFr} » (thème : ${params.stimulus.theme}, sous-thème : ${params.stimulus.subtopic}).
 Lien culturel : ${params.stimulus.culturalLinkFr}

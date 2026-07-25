@@ -1,4 +1,19 @@
 import { describe, expect, it } from 'vitest';
+
+describe('ending early still produces a report', () => {
+  it('allows scoring straight from Part 2', async () => {
+    const { canTransition } = await import('./sessionMachine.js');
+    // Previously PART2_QA could only be abandoned, throwing the attempt away.
+    expect(canTransition('PART2_QA', 'SCORING')).toBe(true);
+    expect(canTransition('PART3_QA', 'SCORING')).toBe(true);
+  });
+
+  it('still refuses to score before the student has spoken', async () => {
+    const { canTransition } = await import('./sessionMachine.js');
+    expect(canTransition('PREP', 'SCORING')).toBe(false);
+    expect(canTransition('CONSENTED', 'SCORING')).toBe(false);
+  });
+});
 import { canTransition, isTerminal, phaseForStatus } from './sessionMachine.js';
 
 describe('sessionMachine', () => {

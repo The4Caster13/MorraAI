@@ -1,5 +1,6 @@
 import type { SessionMode, TranscriptSegmentDto } from '@parlons/shared';
 import type { ExaminerService, StimulusContext } from '../examiner/ExaminerService.js';
+import type { DeliverySummary } from '../analysis/competence.js';
 import { scoreRepo, transcriptRepo } from '../db/repositories/index.js';
 
 export async function scoreAndPersist(
@@ -7,7 +8,11 @@ export async function scoreAndPersist(
   stimulus: StimulusContext,
   mode: SessionMode,
   examiner: ExaminerService,
-  _meta: { lowConfidenceSegments: number },
+  meta: {
+    lowConfidenceSegments: number;
+    endedEarlyAt?: 'PART1' | 'PART2' | 'PART3' | null;
+    delivery?: DeliverySummary;
+  },
 ) {
   const segments = await transcriptRepo.listBySession(sessionId);
   const fullTranscript: TranscriptSegmentDto[] = segments.map((s) => ({
@@ -34,6 +39,7 @@ export async function scoreAndPersist(
     stimulus,
     mode,
     sttConfidenceSummary: { avg, lowConfidenceSegmentIds },
+    delivery: meta.delivery,
   });
 
   // Never trust the model's arithmetic — recompute the total server-side.
@@ -59,6 +65,23 @@ export async function scoreAndPersist(
     strengthsJson: [...result.strengths],
     prioritiesJson: [...result.priorities],
     drillsJson: [...result.drills],
-    confidenceNote: result.uncertaintyNote,
+    confidenceNote: withEarlyEndNote(result.uncertaintyNote, meta.endedEarlyAt),
   });
+}
+
+/**
+ * A session cut short has less evidence behind it, especially for the
+ * conversation criteria. The report has to say so rather than presenting the
+ * marks as if the full exam had run.
+ */
+function withEarlyEndNote(
+  note: string | null,
+  endedEarlyAt?: 'PART1' | 'PART2' | 'PART3' | null,
+): string | null {
+  if (!endedEarlyAt) return note;
+  const detail =
+    endedEarlyAt === 'PART2'
+      ? "Cette session a été interrompue pendant la partie 2 : la conversation générale (partie 3) n'a pas eu lieu, donc les critères B2 et C reposent sur peu d'éléments."
+      : 'Cette session a été terminée avant la fin de la partie 3, donc les critères B2 et C reposent sur moins d’éléments que dans un oral complet.';
+  return note ? `${detail} ${note}` : detail;
 }

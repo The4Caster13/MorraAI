@@ -7,11 +7,20 @@ export interface CaptionLine {
   isFinal: boolean;
 }
 
+export interface Competence {
+  level: 'fragile' | 'intermédiaire' | 'fort';
+  wordsPerMinute: number | null;
+  pauseCount: number;
+  fillerRate: number;
+  tenseVariety: number;
+}
+
 interface SessionState {
   session: SessionDto | null;
   status: SessionStatus | null;
   phase: Phase | null;
   remainingMs: number | null;
+  competence: Competence | null;
   captions: CaptionLine[];
   examinerSpeaking: boolean;
   showQuestionText: boolean;
@@ -28,6 +37,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
   status: null,
   phase: null,
   remainingMs: null,
+  competence: null,
   captions: [],
   examinerSpeaking: false,
   showQuestionText: false,
@@ -77,6 +87,17 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       case 'server:part1HardStop':
         set({ part1HardStopped: true });
         break;
+      case 'server:competenceUpdate':
+        set({
+          competence: {
+            level: msg.level,
+            wordsPerMinute: msg.wordsPerMinute,
+            pauseCount: msg.pauseCount,
+            fillerRate: msg.fillerRate,
+            tenseVariety: msg.tenseVariety,
+          },
+        });
+        break;
       case 'server:error':
         set({ error: { code: msg.code, message: msg.message, recoverable: msg.recoverable } });
         break;
@@ -98,6 +119,7 @@ export const useSessionStore = create<SessionState>((set, get) => ({
       status: null,
       phase: null,
       remainingMs: null,
+      competence: null,
       captions: [],
       examinerSpeaking: false,
       part1HardStopped: false,

@@ -7,7 +7,9 @@ const TRANSITIONS: Record<SessionStatus, SessionStatus[]> = {
   PART1_INTRO: ['PART1_RECORDING', 'ABANDONED', 'ERROR'],
   PART1_RECORDING: ['PART1_CLOSING', 'ABANDONED', 'ERROR'],
   PART1_CLOSING: ['PART2_QA', 'ABANDONED', 'ERROR'],
-  PART2_QA: ['PART3_QA', 'ABANDONED', 'ERROR'],
+  // SCORING is reachable from Part 2 so that ending early still produces a
+  // report from whatever was said, rather than discarding the attempt.
+  PART2_QA: ['PART3_QA', 'SCORING', 'ABANDONED', 'ERROR'],
   PART3_QA: ['SCORING', 'ABANDONED', 'ERROR'],
   SCORING: ['COMPLETE', 'ERROR'],
   COMPLETE: [],

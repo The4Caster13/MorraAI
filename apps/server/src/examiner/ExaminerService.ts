@@ -2,6 +2,16 @@ import type { Criterion, Phase, SessionMode, TranscriptSegmentDto } from '@parlo
 
 export type CompetenceEstimate = Record<Criterion, number>; // 0-1 rough signal
 
+/** Measured delivery signals, used to pitch question difficulty. */
+export interface DeliveryContext {
+  level: 'fragile' | 'intermédiaire' | 'fort';
+  wordsPerMinute: number | null;
+  pauseCount: number;
+  fillerRate: number;
+  tenseVariety: number;
+  subordinationRate: number;
+}
+
 export interface StimulusContext {
   id: string;
   theme: string;
@@ -22,6 +32,7 @@ export interface OpenLiveSessionParams {
   stimulus: StimulusContext;
   priorTranscript?: string;
   competenceEstimate?: CompetenceEstimate;
+  delivery?: DeliveryContext;
   timeRemainingMs: number;
   onStudentTranscript(seg: TranscriptChunk): void;
   onExaminerAudio(pcm16: Buffer): void;
@@ -53,6 +64,21 @@ export interface ScoreSessionInput {
   stimulus: StimulusContext;
   mode: SessionMode;
   sttConfidenceSummary: { avg: number | null; lowConfidenceSegmentIds: string[] };
+  /**
+   * Measured delivery. A transcript cannot show pace, hesitation or pausing,
+   * all of which Criterion A explicitly assesses — without this the model is
+   * guessing at fluency from punctuation.
+   */
+  delivery?: {
+    wordsPerMinute: number | null;
+    speechMs: number;
+    pauseCount: number;
+    longestPauseMs: number;
+    fillerRate: number;
+    tenseVariety: number;
+    subordinationRate: number;
+    lexicalDiversity: number;
+  };
 }
 
 export interface ScoreSessionResult {

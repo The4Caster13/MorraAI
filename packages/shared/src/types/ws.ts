@@ -55,6 +55,16 @@ export const wsServerMessageSchema = z.discriminatedUnion('type', [
     confidence: z.number().nullable(),
   }),
   z.object({ type: z.literal('server:part1HardStop') }),
+  // Running read on the student, so the adaptive loop is visible rather than
+  // being invisible server-side state.
+  z.object({
+    type: z.literal('server:competenceUpdate'),
+    level: z.enum(['fragile', 'intermédiaire', 'fort']),
+    wordsPerMinute: z.number().nullable(),
+    pauseCount: z.number().int(),
+    fillerRate: z.number(),
+    tenseVariety: z.number().int(),
+  }),
   z.object({
     type: z.literal('server:error'),
     code: z.string(),

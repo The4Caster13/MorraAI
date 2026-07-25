@@ -1,11 +1,17 @@
 import type { Phase, SessionMode, SessionStatus, WsServerMessage } from '@parlons/shared';
 import { PART1_SECONDS_CAP, PART2_SECONDS_CAP, PART3_SECONDS_CAP } from '@parlons/shared';
 import type {
-  CompetenceEstimate,
   ExaminerService,
   LiveExaminerSession,
   StimulusContext,
 } from '../examiner/ExaminerService.js';
+import { analyseLanguage } from '../analysis/languageMetrics.js';
+import { SpeechActivityTracker } from '../analysis/speechActivity.js';
+import {
+  estimateCompetence,
+  initialCompetence,
+  type CompetenceSnapshot,
+} from '../analysis/competence.js';
 import { sessionRepo, transcriptRepo } from '../db/repositories/index.js';
 import { assertTransition, phaseForStatus } from './sessionMachine.js';
 import { audioPath, getStorageService } from '../storage/StorageService.js';
@@ -19,14 +25,6 @@ const PHASE_CAPS_MS: Record<Phase, number> = {
   PART2: PART2_SECONDS_CAP * 1000,
   PART3: PART3_SECONDS_CAP * 1000,
 };
-
-const TENSE_MARKERS = [
-  /\bj'ai \w+é\b/i, // passé composé
-  /\bétai(s|t|ent)\b/i, // imparfait
-  /\bser(ai|as|a|ons|ez|ont)\b/i, // futur
-  /\b\w+rais\b/i, // conditionnel
-  /\bque je \w+e\b/i, // subjonctif (rough)
-];
 
 interface PhaseAudio {
   student: Buffer[];
@@ -50,6 +48,9 @@ export class SessionRuntime {
   private studentUtterances: string[] = [];
   private lowConfidenceSegments = 0;
   private closed = false;
+  /** Set when the student ends the session before Part 3 has run its course. */
+  private endedEarlyAt: Phase | null = null;
+  private speech = new SpeechActivityTracker();
 
   constructor(
     public readonly sessionId: string,
@@ -165,12 +166,21 @@ export class SessionRuntime {
 
   private async openExaminerForPhase(phase: Phase) {
     const priorTranscript = this.studentUtterances.join('\n').slice(-6000);
+    const competence = this.competence();
     this.examinerSession = await this.examiner.openLiveSession({
       phase,
       mode: this.mode,
       stimulus: this.stimulus,
       priorTranscript: priorTranscript || undefined,
-      competenceEstimate: this.competenceEstimate(),
+      competenceEstimate: competence.estimate,
+      delivery: {
+        level: competence.level,
+        wordsPerMinute: competence.delivery.wordsPerMinute,
+        pauseCount: competence.delivery.pauseCount,
+        fillerRate: competence.delivery.fillerRate,
+        tenseVariety: competence.delivery.tenseVariety,
+        subordinationRate: competence.delivery.subordinationRate,
+      },
       timeRemainingMs: PHASE_CAPS_MS[phase],
       onStudentTranscript: (seg) => {
         if (seg.isFinal) {
@@ -196,6 +206,8 @@ export class SessionRuntime {
           isFinal: seg.isFinal,
           confidence: seg.confidence,
         });
+        // A completed utterance is the only thing that moves the estimate.
+        if (seg.isFinal) this.emitCompetence();
       },
       onExaminerAudio: (pcm16) => {
         this.audio[phase].examiner.push(pcm16);
@@ -275,6 +287,9 @@ export class SessionRuntime {
     if (phaseForStatus(this.status) !== phase) return;
     const pcm = Buffer.from(pcm16Base64, 'base64');
     this.audio[phase].student.push(pcm);
+    // Voice activity is measured here, on the raw stream, because it's the only
+    // place the difference between speaking and silence is observable.
+    this.speech.push(pcm);
     this.examinerSession?.sendStudentAudioChunk(pcm);
   }
 
@@ -296,10 +311,16 @@ export class SessionRuntime {
     this.stopCountdown();
     const phase = phaseForStatus(this.status);
     if (phase) await this.closePhase(phase);
-    if (this.status === 'PART3_QA') {
+
+    // Score from any Q&A phase. A student who stops after Part 2 has still
+    // produced a presentation and a discussion — enough for a useful report,
+    // provided it says plainly that the session was cut short.
+    if (this.status === 'PART2_QA' || this.status === 'PART3_QA') {
+      this.endedEarlyAt = this.status === 'PART2_QA' ? 'PART2' : 'PART3';
       await this.finishAndScore();
       return;
     }
+
     await this.setStatus('ABANDONED');
     await this.cleanup();
   }
@@ -311,6 +332,8 @@ export class SessionRuntime {
     try {
       await scoreAndPersist(this.sessionId, this.stimulus, this.mode, this.examiner, {
         lowConfidenceSegments: this.lowConfidenceSegments,
+        endedEarlyAt: this.endedEarlyAt,
+        delivery: this.competence().delivery,
       });
       await this.setStatus('COMPLETE');
       this.emit({ type: 'server:sessionComplete', sessionId: this.sessionId });
@@ -349,24 +372,33 @@ export class SessionRuntime {
     }
   }
 
-  // ---- Competence heuristic ----
+  // ---- Competence ----
 
-  private competenceEstimate(): CompetenceEstimate {
-    const utterances = this.studentUtterances;
-    if (utterances.length === 0) return { A: 0.5, B1: 0.5, B2: 0.5, C: 0.5 };
-    const text = utterances.join(' ');
-    const words = text.split(/\s+/).filter(Boolean);
-    const avgLen = words.length / utterances.length;
-    const lengthSignal = Math.min(1, avgLen / 40);
-    const tenseVariety =
-      TENSE_MARKERS.filter((re) => re.test(text)).length / TENSE_MARKERS.length;
-    const a = 0.5 * lengthSignal + 0.5 * tenseVariety;
-    return {
-      A: round2(a),
-      B1: round2(lengthSignal),
-      B2: round2(lengthSignal),
-      C: round2(Math.min(1, utterances.length / 10)),
-    };
+  /**
+   * Current read on the student, from measured delivery plus transcript
+   * analysis. Recomputed rather than cached: it's cheap, and every caller wants
+   * the state as of now.
+   */
+  private competence(): CompetenceSnapshot {
+    if (this.studentUtterances.length === 0) return initialCompetence();
+    return estimateCompetence(
+      analyseLanguage(this.studentUtterances.join(' ')),
+      this.speech.snapshot(),
+      this.studentUtterances.length,
+    );
+  }
+
+  /** Pushes the current estimate to the client so adaptation is visible. */
+  private emitCompetence(): void {
+    const c = this.competence();
+    this.emit({
+      type: 'server:competenceUpdate',
+      level: c.level,
+      wordsPerMinute: c.delivery.wordsPerMinute,
+      pauseCount: c.delivery.pauseCount,
+      fillerRate: c.delivery.fillerRate,
+      tenseVariety: c.delivery.tenseVariety,
+    });
   }
 
   async cleanup() {
@@ -378,9 +410,6 @@ export class SessionRuntime {
   }
 }
 
-function round2(n: number): number {
-  return Math.round(n * 100) / 100;
-}
 
 // ---- Registry ----
 

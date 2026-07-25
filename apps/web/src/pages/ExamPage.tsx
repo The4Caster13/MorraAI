@@ -8,6 +8,7 @@ import { useMicCapture } from '../hooks/useMicCapture';
 import { useSessionStore } from '../state/sessionStore';
 import { NotepadEditor } from '../components/NotepadEditor';
 import {
+  AdaptationPanel,
   AudioLevelMeter,
   Button,
   Card,
@@ -34,6 +35,7 @@ export function ExamPage() {
   const showQuestionText = useSessionStore((s) => s.showQuestionText);
   const setShowQuestionText = useSessionStore((s) => s.setShowQuestionText);
   const part1HardStopped = useSessionStore((s) => s.part1HardStopped);
+  const competence = useSessionStore((s) => s.competence);
   const complete = useSessionStore((s) => s.complete);
   const error = useSessionStore((s) => s.error);
   const reset = useSessionStore((s) => s.reset);
@@ -208,6 +210,7 @@ export function ExamPage() {
               </p>
             </div>
             <AudioLevelMeter level={level} />
+            <AdaptationPanel competence={competence} />
 
             {isPractice && (
               <label className="flex items-center gap-2 text-sm text-slate-700">

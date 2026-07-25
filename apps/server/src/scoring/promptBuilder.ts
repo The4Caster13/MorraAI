@@ -76,10 +76,30 @@ export function buildScoringPrompt(input: ScoreSessionInput): string {
         } segment(s) à faible confiance sont marqués [transcription incertaine].`
       : "Aucune donnée de confiance de transcription disponible.";
 
+  // Criterion A covers pronunciation, intonation and fluency — none of which a
+  // transcript preserves. These measurements are the only evidence of delivery
+  // the model gets, so they're stated explicitly rather than left to inference.
+  const d = input.delivery;
+  const deliveryNote = d
+    ? `MESURES DE DÉBIT (calculées sur l'audio, pas déduites du texte) :
+- Débit : ${d.wordsPerMinute !== null ? `${d.wordsPerMinute} mots/minute` : 'non mesurable (trop peu de parole)'} — un locuteur à l'aise se situe vers 130-160.
+- Temps de parole effectif : ${Math.round(d.speechMs / 1000)} s.
+- Pauses marquées (> 0,7 s) : ${d.pauseCount}${d.longestPauseMs > 0 ? `, la plus longue ${(d.longestPauseMs / 1000).toFixed(1)} s` : ''}.
+- Hésitations (euh, ben…) : ${d.fillerRate} pour 100 mots.
+- Temps verbaux distincts employés : ${d.tenseVariety}.
+- Subordination : ${d.subordinationRate} marqueurs pour 100 mots.
+- Diversité lexicale : ${d.lexicalDiversity}.
+Utilise ces mesures pour le critère A (aisance, débit) au lieu de deviner à partir
+de la ponctuation. Ne les cite pas comme des preuves textuelles : les citations
+doivent rester des extraits de la transcription.
+`
+    : '';
+
   return `${SCORING_PERSONA}
 
 ${CRITERIA_DESCRIPTIONS}
 
+${deliveryNote}
 CONTEXTE DE LA SESSION
 Stimulus visuel : « ${input.stimulus.captionFr} » (thème : ${input.stimulus.theme},
 sous-thème : ${input.stimulus.subtopic}). Lien culturel proposé :

@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react';
 import { DISCLAIMER_FR, THEME_LABELS, type Theme } from '@parlons/shared';
-import type { CaptionLine } from '../state/sessionStore';
+import type { CaptionLine, Competence } from '../state/sessionStore';
 
 export function formatTime(ms: number): string {
   const total = Math.max(0, Math.ceil(ms / 1000));
@@ -116,6 +116,64 @@ export function StimulusImageCard({
         </p>
       </figcaption>
     </figure>
+  );
+}
+
+/**
+ * Live view of what the examiner has measured and how it is adapting.
+ *
+ * The adaptive loop is otherwise invisible — the questions simply get harder or
+ * easier, which is impossible to attribute while you're in the middle of
+ * answering them. Showing the signals makes the behaviour legible.
+ */
+export function AdaptationPanel({ competence }: { competence: Competence | null }) {
+  const level = competence?.level ?? 'intermédiaire';
+  const tone = {
+    fragile: 'bg-amber-50 border-amber-300 text-amber-900',
+    intermédiaire: 'bg-sky-50 border-sky-300 text-sky-900',
+    fort: 'bg-emerald-50 border-emerald-300 text-emerald-900',
+  }[level];
+  const pitch = {
+    fragile: 'questions courtes et concrètes, au présent',
+    intermédiaire: 'questions ouvertes qui invitent à développer',
+    fort: 'questions abstraites et hypothétiques (conditionnel, subjonctif)',
+  }[level];
+
+  return (
+    <section className={`rounded-md border px-4 py-3 text-sm ${tone}`} aria-live="polite">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+        <h2 className="font-semibold">
+          Niveau détecté : <span className="uppercase tracking-wide">{level}</span>
+        </h2>
+        <p className="text-xs opacity-80">L'examinateur adapte : {pitch}</p>
+      </div>
+      {competence ? (
+        <dl className="mt-2 flex flex-wrap gap-x-5 gap-y-1 font-mono text-xs tabular-nums">
+          <div>
+            <dt className="inline opacity-70">débit </dt>
+            <dd className="inline font-semibold">
+              {competence.wordsPerMinute === null ? '—' : `${competence.wordsPerMinute} mots/min`}
+            </dd>
+          </div>
+          <div>
+            <dt className="inline opacity-70">pauses </dt>
+            <dd className="inline font-semibold">{competence.pauseCount}</dd>
+          </div>
+          <div>
+            <dt className="inline opacity-70">hésitations </dt>
+            <dd className="inline font-semibold">{competence.fillerRate}/100 mots</dd>
+          </div>
+          <div>
+            <dt className="inline opacity-70">temps verbaux </dt>
+            <dd className="inline font-semibold">{competence.tenseVariety}</dd>
+          </div>
+        </dl>
+      ) : (
+        <p className="mt-2 text-xs opacity-70">
+          Les mesures apparaîtront dès que vous commencerez à parler.
+        </p>
+      )}
+    </section>
   );
 }
 
