@@ -34,6 +34,19 @@ describe('hintForError', () => {
     expect(hintForError(prismaError('P1000'))).toMatch(/Authentication failed/);
   });
 
+  it('blames the password when the server rejects the credentials', () => {
+    // Reported as PrismaClientInitializationError with no code, so the previous
+    // catch-all wrongly suggested regenerating the client.
+    const err = Object.assign(
+      new Error(
+        'Authentication failed against database server, the provided database credentials for `postgres` are not valid.',
+      ),
+      { name: 'PrismaClientInitializationError' },
+    );
+    expect(hintForError(err)).toMatch(/password/i);
+    expect(hintForError(err)).not.toMatch(/db:generate/);
+  });
+
   it('recognises an ungenerated client by name or message', () => {
     const byName = Object.assign(new Error('x'), { name: 'PrismaClientInitializationError' });
     expect(hintForError(byName)).toMatch(/db:generate|DATABASE_URL/);

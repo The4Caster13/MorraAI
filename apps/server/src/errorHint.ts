@@ -24,6 +24,15 @@ export function hintForError(err: unknown): string | undefined {
   if (message.includes('tenant or user not found') || message.includes('tenant/user')) {
     return 'The database rejected the username. On Supabase it must be postgres.<your-project-ref> with the ref substituted in — copy the string from Connect → Session pooler.';
   }
+  // The host and username were accepted, so this is squarely the password.
+  if (message.includes('Authentication failed') || message.includes('password authentication')) {
+    return (
+      'The database password is wrong. Three usual causes: [YOUR-PASSWORD] was never replaced; ' +
+      'the password is genuinely different (Settings → Database → Reset database password); or it ' +
+      'contains @ : / ? # or %, which must be percent-encoded inside a URL — resetting to letters ' +
+      'and digits only avoids that entirely.'
+    );
+  }
   // Supavisor/PgBouncer in transaction mode (Supabase port 6543) cannot hold
   // prepared statements, which Prisma creates by default.
   if (message.includes('prepared statement')) {

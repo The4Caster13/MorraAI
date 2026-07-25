@@ -30,12 +30,18 @@ const optionalFilled = <T extends z.ZodTypeAny>(schema: T) =>
  * `FATAL: tenant/user postgres.<ref> not found` — an authentication error that
  * reads like a credentials problem rather than an unedited template.
  */
+// Supabase writes its password placeholder as [YOUR-PASSWORD]; other providers
+// use <angle brackets>. Bracketed IPv6 hosts (`[::1]`, `[fe80::1]`) contain
+// digits and colons, so requiring letters, hyphens and underscores only keeps
+// them out of this check.
+const PLACEHOLDER = /<[^>]*>|\[[A-Za-z][A-Za-z_-]*\]/;
+
 const connectionString = (name: string) =>
   z
     .string()
     .min(1)
-    .refine((v) => !/[<>]/.test(v), {
-      message: `${name} still contains a <placeholder>. Replace every <...> with the real value — on Supabase, copy the string from Connect → Session pooler and substitute your password.`,
+    .refine((v) => !PLACEHOLDER.test(v), {
+      message: `${name} still contains a placeholder such as <ref> or [YOUR-PASSWORD]. Replace it with the real value — on Supabase, copy the string from Connect → Session pooler, then substitute your database password.`,
     });
 
 const envSchema = z.object({
