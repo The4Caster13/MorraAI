@@ -6,6 +6,16 @@ function prismaError(code: string, message = 'boom') {
 }
 
 describe('hintForError', () => {
+  it('spots an unreplaced placeholder before blaming credentials', () => {
+    const err = new Error('FATAL: (ENOTFOUND) tenant/user postgres.<ref> not found');
+    expect(hintForError(err)).toMatch(/placeholder/i);
+  });
+
+  it('explains a rejected Supabase username', () => {
+    const err = new Error('FATAL: tenant or user not found');
+    expect(hintForError(err)).toMatch(/project-ref|Session pooler/);
+  });
+
   it('spots a connection pooler rejecting prepared statements', () => {
     const err = new Error('prepared statement "s0" already exists');
     expect(hintForError(err)).toMatch(/pgbouncer=true/);

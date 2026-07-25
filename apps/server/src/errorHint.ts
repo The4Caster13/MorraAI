@@ -13,6 +13,17 @@ export function hintForError(err: unknown): string | undefined {
   const name = asRecord.name;
   const message = err instanceof Error ? err.message : String(err);
 
+  // Check for an unreplaced template before anything else — it otherwise
+  // surfaces as an authentication or DNS failure and sends you hunting for the
+  // wrong thing.
+  if (/[<>]/.test(message)) {
+    return 'A connection string still contains a <placeholder>. Replace every <...> in .env with the real value from your database provider.';
+  }
+  // Supabase's pooler reports an unknown username this way, which in practice
+  // means the project ref is wrong or was never substituted in.
+  if (message.includes('tenant or user not found') || message.includes('tenant/user')) {
+    return 'The database rejected the username. On Supabase it must be postgres.<your-project-ref> with the ref substituted in — copy the string from Connect → Session pooler.';
+  }
   // Supavisor/PgBouncer in transaction mode (Supabase port 6543) cannot hold
   // prepared statements, which Prisma creates by default.
   if (message.includes('prepared statement')) {

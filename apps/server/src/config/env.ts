@@ -23,9 +23,24 @@ export function blankIfUnfilled(value: unknown): unknown {
 const optionalFilled = <T extends z.ZodTypeAny>(schema: T) =>
   z.preprocess(blankIfUnfilled, schema.optional());
 
+/**
+ * Rejects a connection string that still contains an unreplaced `<placeholder>`.
+ *
+ * Without this the value reaches the database and comes back as
+ * `FATAL: tenant/user postgres.<ref> not found` — an authentication error that
+ * reads like a credentials problem rather than an unedited template.
+ */
+const connectionString = (name: string) =>
+  z
+    .string()
+    .min(1)
+    .refine((v) => !/[<>]/.test(v), {
+      message: `${name} still contains a <placeholder>. Replace every <...> with the real value — on Supabase, copy the string from Connect → Session pooler and substitute your password.`,
+    });
+
 const envSchema = z.object({
-  DATABASE_URL: z.string().min(1),
-  DIRECT_URL: z.string().min(1).optional(),
+  DATABASE_URL: connectionString('DATABASE_URL'),
+  DIRECT_URL: connectionString('DIRECT_URL').optional(),
   // Optional: audio replay is stored in Supabase when configured, on local disk
   // otherwise. Nothing else depends on these.
   SUPABASE_URL: optionalFilled(z.string().url()),
@@ -49,7 +64,17 @@ const envSchema = z.object({
 
 export type Env = z.infer<typeof envSchema>;
 
-export const env: Env = envSchema.parse(process.env);
+function parseEnv(): Env {
+  const result = envSchema.safeParse(process.env);
+  if (result.success) return result.data;
+
+  // A Zod stack trace buries the one line that matters.
+  const lines = result.error.issues.map((i) => `  • ${i.path.join('.')}: ${i.message}`);
+  console.error(`\nConfiguration problem in .env:\n${lines.join('\n')}\n`);
+  process.exit(1);
+}
+
+export const env: Env = parseEnv();
 
 export function examinerMode(e: Env = env): 'mock' | 'gemini' {
   if (e.EXAMINER_MODE) return e.EXAMINER_MODE;
