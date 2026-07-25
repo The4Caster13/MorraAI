@@ -102,31 +102,109 @@ through to Part 3 before ending. This is a known rough edge, not a misconfigurat
 
 ## Path B — Real examiner (Gemini key + microphone)
 
-Everything above, plus:
+### 1. Credentials you need
+
+| What | Where | Cost |
+|---|---|---|
+| **Gemini API key** | [aistudio.google.com/apikey](https://aistudio.google.com/apikey) | Free tier available; Live API usage is metered |
+| **Postgres** | Supabase project, or local Docker | Free |
+| **Supabase Storage** (optional) | Same project → private bucket `session-audio` | Free |
+
+That's the whole list — there is no separate speech-to-text or text-to-speech key. Gemini
+Live does audio in, transcription, question generation and audio out in one connection.
+
+Sign in to AI Studio with a Google account, click **Get API key** → **Create API key**, and
+copy it. A key from the free tier is enough to test; the Live API has low rate limits there,
+so if you get 429s during a demo that's the tier, not your code.
+
+### 2. Add it to `.env`
 
 ```
-GEMINI_API_KEY="..."
+GEMINI_API_KEY="AIza..."
+GEMINI_LIVE_MODEL="gemini-3.1-flash-live-preview"
+GEMINI_SCORING_MODEL="gemini-3.5-flash"
 ```
 
-Restart the server. Check which examiner is live:
+Setting the key is what switches the app out of mock mode. Make sure `EXAMINER_MODE` is
+**not** set to `mock`, or it will stay on the canned examiner.
+
+### 3. Preflight — do this before anything else
 
 ```bash
+npm run check:gemini
+```
+
+This takes about fifteen seconds, needs no database and no microphone, and tells you
+whether the key works, whether both model names still resolve, and how long the examiner
+takes to start speaking:
+
+```
+Scoring model: gemini-3.5-flash
+  ✓ responded in 412ms with valid JSON
+
+Live model: gemini-3.1-flash-live-preview
+  ✓ connected and streamed 138240 bytes of audio
+  ✓ time to first audio: 890ms (within the 2.5s PRD target)
+  ✓ examiner said: "Bonjour, je suis votre examinateur pour cet oral."
+
+Both models reachable. Safe to run the app with a real examiner.
+```
+
+If this fails, the app will fail the same way but ten minutes later and less legibly. Fix
+it here first.
+
+**404 / "model not found"** means the model name has been retired — Live models are
+preview-tier and get rotated often. Try the fallback
+`gemini-2.5-flash-native-audio-preview-12-2025`, and check the
+[deprecations page](https://ai.google.dev/gemini-api/docs/deprecations) for what's current.
+
+### 4. Confirm the running server agrees
+
+```bash
+npm run dev
 curl http://localhost:3001/api/health
 # {"status":"ok","examinerMode":"gemini"}
 ```
 
-`mock` means the key isn't being read — check that `.env` is at the repo root and that
-`EXAMINER_MODE` isn't pinned.
+`"examinerMode":"mock"` means the key isn't being read — check that `.env` is at the repo
+root, not in `apps/server/`.
+
+### 5. Microphone
+
+The browser will prompt for mic permission when Part 1 starts. Notes:
+
+- **Use Chrome.** The mic path uses `ScriptProcessorNode`, which is deprecated; Chrome is
+  the most forgiving. Safari and iPad are unverified.
+- **`localhost` is fine** — `getUserMedia` requires a secure context, and browsers treat
+  `localhost` as one. If you expose the dev server on your LAN to test from a phone, it
+  will need HTTPS or the mic silently won't start.
+- If you've denied permission once, Chrome remembers. Reset it via the icon at the left of
+  the address bar.
 
 ### Testing notes
 
 - **Use headphones.** The mic stays open while the examiner speaks. On speakers, its own
-  voice can be picked up and fed back as if you said it.
-- Chrome is the safest browser for the mic path. Safari and iPad are unverified.
-- Exam mode hides the question text by design. In practice mode, tick **Afficher le texte
-  des questions** so you can read what it asked while debugging.
-- You can speak English or nonsense to test the plumbing, but the examiner is instructed to
-  reply only in French — that's intended behaviour, not a bug.
+  voice can be picked up and fed back as if you said it — you'll see the examiner's words
+  appear in the transcript attributed to the student.
+- Run it in **practice mode** first and tick **Afficher le texte des questions**, so you can
+  read what the examiner asked while debugging. Exam mode hides it by design.
+- You can speak English to test the plumbing, but the examiner is instructed to reply only
+  in French — that's intended, not a bug.
+- A full run is 15 min prep + 4 + 5 + 6 minutes. For a demo, use practice mode with prep at
+  0, keep Part 1 short, and let Parts 2 and 3 run only a couple of turns each before ending
+  from Part 3.
+
+### First real run — what to check, in order
+
+1. **Does the examiner speak?** If the preflight passed but you hear nothing here, the
+   problem is browser audio playback, not Gemini.
+2. **Does your speech appear in the live captions?** That's `inputTranscription` arriving.
+3. **Does the report's transcript contain your answers?** That's the turn-buffering fix.
+   Captions working but transcript empty means segments aren't being marked final.
+4. **Do the marks cite things you actually said?** If the quotes look invented, the scorer
+   isn't receiving the transcript — check step 3 first.
+5. **Does the examiner wait for you to finish?** If it fires a second question immediately,
+   turn-taking has regressed.
 
 ### What to watch for
 
@@ -148,6 +226,7 @@ anything:
 npm test                # 27 tests across server + shared
 npm run typecheck       # tsc across all three workspaces
 npm run verify:stimuli  # licence allow-list, file existence, theme coverage
+npm run check:gemini    # key + both model names + latency (needs GEMINI_API_KEY)
 ```
 
 `npm test` is worth running before every commit — the state machine, WS contract, scoring
@@ -171,7 +250,11 @@ dev server running.
 
 ## Known limits of this guide
 
-The automated checks, the web production build and the typecheck have all been verified.
-Booting the server end-to-end has **not** been verified in this environment — Prisma's
-engine download is blocked here, so the database path is untested from my side. If
-something fails at `db:deploy` or first boot, that's the least-exercised part of the setup.
+Verified: the test suite, the typecheck, the web production build, the stimulus verifier,
+and that `check-gemini.ts` compiles and handles a missing or bad key correctly.
+
+**Not** verified: anything requiring a database or a live Gemini connection. Prisma's engine
+download and `generativelanguage.googleapis.com` are both blocked in the environment this
+was written in. So `db:deploy`, first boot, and the entire real-examiner path are untested
+from my side — they're reasoned from the API docs, not observed. `npm run check:gemini` is
+the fastest way to find out if that reasoning holds.

@@ -96,15 +96,28 @@ particular, the lack of authentication.
 
 ## Enabling the real AI examiner
 
-Add a Gemini API key to `.env`:
+Get a key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey) and add it to
+`.env`:
 
 ```
 GEMINI_API_KEY="..."
 ```
 
+Then check it before running the app:
+
+```bash
+npm run check:gemini    # verifies key, both model names, and latency
+```
+
 Restart the server. `GET /api/health` reports which examiner is active. No code changes
 are needed — the factory in [apps/server/src/examiner/index.ts](apps/server/src/examiner/index.ts)
 swaps `MockExaminerService` for `GeminiExaminerService`.
+
+Live API models are preview-tier and are retired regularly. If `check:gemini` returns a 404,
+consult [the deprecations page](https://ai.google.dev/gemini-api/docs/deprecations) and
+update `GEMINI_LIVE_MODEL`.
+
+See [TESTING.md](TESTING.md) for the full step-by-step.
 
 Note: Gemini Live sessions are opened **per exam phase** rather than once per exam, because
 audio sessions are capped near 15 minutes — close to the total spoken exam time. Cross-phase

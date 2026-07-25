@@ -8,8 +8,13 @@ const envSchema = z.object({
   SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
   SUPABASE_AUDIO_BUCKET: z.string().default('session-audio'),
   GEMINI_API_KEY: z.string().optional(),
-  GEMINI_LIVE_MODEL: z.string().default('gemini-2.5-flash-native-audio-preview-09-2025'),
-  GEMINI_SCORING_MODEL: z.string().default('gemini-2.5-flash'),
+  // Current Live API preview model (released 2026-03-11, no shutdown announced).
+  // Fallback if it errors: gemini-2.5-flash-native-audio-preview-12-2025.
+  // Note that gemini-live-2.5-flash-preview and gemini-2.0-flash-live-001 were
+  // both shut down on 2025-12-09 and will 404.
+  GEMINI_LIVE_MODEL: z.string().default('gemini-3.1-flash-live-preview'),
+  // gemini-2.5-flash still works but is scheduled for shutdown on 2026-10-16.
+  GEMINI_SCORING_MODEL: z.string().default('gemini-3.5-flash'),
   EXAMINER_MODE: z.enum(['mock', 'gemini']).optional(),
   PORT: z.coerce.number().default(3001),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
