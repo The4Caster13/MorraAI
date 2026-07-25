@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ChevronRight } from 'lucide-react';
-import type { StimulusDto } from '@parlons/shared';
+import type { StimulusDto } from '@morrai/shared';
 import { api } from '../../../lib/api';
 import { THEME_CONTENT } from '../../../lib/themeContent';
 import { useScrollReveal } from '../../../hooks/useAnimations';

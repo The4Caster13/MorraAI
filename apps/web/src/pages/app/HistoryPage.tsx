@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, TrendingUp } from 'lucide-react';
-import type { SessionSummaryDto } from '@parlons/shared';
+import type { SessionSummaryDto } from '@morrai/shared';
 import { api } from '../../lib/api';
 import { getStoredUserId } from '../../lib/profile';
 import { themeContent } from '../../lib/themeContent';

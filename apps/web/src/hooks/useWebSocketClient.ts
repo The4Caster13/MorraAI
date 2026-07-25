@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { wsServerMessageSchema, type WsClientMessage } from '@parlons/shared';
+import { wsServerMessageSchema, type WsClientMessage } from '@morrai/shared';
 import { useSessionStore } from '../state/sessionStore';
 import { PcmStreamingPlayer } from '../lib/audio/pcmPlayer';
 import { ensureUserId } from '../lib/profile';

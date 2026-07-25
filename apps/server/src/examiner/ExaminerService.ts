@@ -1,4 +1,4 @@
-import type { Criterion, Phase, SessionMode, TranscriptSegmentDto } from '@parlons/shared';
+import type { Criterion, Phase, SessionMode, TranscriptSegmentDto } from '@morrai/shared';
 
 export type CompetenceEstimate = Record<Criterion, number>; // 0-1 rough signal
 

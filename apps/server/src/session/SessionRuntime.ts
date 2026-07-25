@@ -1,5 +1,5 @@
-import type { Phase, SessionMode, SessionStatus, WsServerMessage } from '@parlons/shared';
-import { PART1_SECONDS_CAP, PART2_SECONDS_CAP, PART3_SECONDS_CAP } from '@parlons/shared';
+import type { Phase, SessionMode, SessionStatus, WsServerMessage } from '@morrai/shared';
+import { PART1_SECONDS_CAP, PART2_SECONDS_CAP, PART3_SECONDS_CAP } from '@morrai/shared';
 import type {
   ExaminerService,
   LiveExaminerSession,

@@ -15,7 +15,7 @@ const PART2_QUESTIONS = [
 ];
 
 const PART3_QUESTIONS = [
-  "Parlons maintenant d'un autre sujet. Quel rôle la technologie joue-t-elle dans votre vie quotidienne ?",
+  "Morrai maintenant d'un autre sujet. Quel rôle la technologie joue-t-elle dans votre vie quotidienne ?",
   "Pensez-vous que les jeunes d'aujourd'hui s'engagent assez pour l'environnement ?",
   'Comment décririez-vous votre identité culturelle ?',
   "Quelle expérience de voyage vous a le plus transformé ?",

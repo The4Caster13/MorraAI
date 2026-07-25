@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Brain } from 'lucide-react';
-import { DISCLAIMER_EN } from '@parlons/shared';
+import { DISCLAIMER_EN } from '@morrai/shared';
 
 export function formatTime(ms: number): string {
   const total = Math.max(0, Math.ceil(ms / 1000));

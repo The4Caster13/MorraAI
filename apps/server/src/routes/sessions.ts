@@ -7,7 +7,7 @@ import {
   PHASES,
   PREP_SECONDS_DEFAULT,
   SPEAKERS,
-} from '@parlons/shared';
+} from '@morrai/shared';
 import { sessionRepo, stimulusRepo, transcriptRepo, userRepo } from '../db/repositories/index.js';
 import { assertTransition, InvalidTransitionError } from '../session/sessionMachine.js';
 import { disposeRuntime } from '../session/SessionRuntime.js';

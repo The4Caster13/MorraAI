@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Award, Mic, MicOff, Play, RefreshCw } from 'lucide-react';
-import { PART1_SECONDS_CAP, type SessionDto } from '@parlons/shared';
+import { PART1_SECONDS_CAP, type SessionDto } from '@morrai/shared';
 import { api } from '../../lib/api';
 import { ensureUserId } from '../../lib/profile';
 import { themeContent } from '../../lib/themeContent';

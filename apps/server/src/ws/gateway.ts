@@ -1,6 +1,6 @@
 import type { FastifyPluginAsync } from 'fastify';
 import type { WebSocket } from 'ws';
-import { wsClientMessageSchema, type WsServerMessage } from '@parlons/shared';
+import { wsClientMessageSchema, type WsServerMessage } from '@morrai/shared';
 import { sessionRepo } from '../db/repositories/index.js';
 import { getExaminerService } from '../examiner/index.js';
 import { getRuntime, registerRuntime, SessionRuntime } from '../session/SessionRuntime.js';

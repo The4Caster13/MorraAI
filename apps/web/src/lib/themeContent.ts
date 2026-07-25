@@ -1,5 +1,5 @@
 import { BookOpen, Globe, Lightbulb, Leaf, Users, type LucideIcon } from 'lucide-react';
-import { THEME_LABELS, THEME_LABELS_EN, type Theme } from '@parlons/shared';
+import { THEME_LABELS, THEME_LABELS_EN, type Theme } from '@morrai/shared';
 
 /**
  * Presentation-only metadata for the five IB themes: icon, accent colour and the

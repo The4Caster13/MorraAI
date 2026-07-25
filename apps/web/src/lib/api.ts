@@ -6,7 +6,7 @@ import type {
   SessionSummaryDto,
   StimulusDto,
   TranscriptSegmentDto,
-} from '@parlons/shared';
+} from '@morrai/shared';
 
 /**
  * Builds a readable message from a failed response.

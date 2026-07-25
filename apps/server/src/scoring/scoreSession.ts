@@ -1,5 +1,5 @@
-import type { Phase, SessionMode, TranscriptSegmentDto } from '@parlons/shared';
-import { PHASES } from '@parlons/shared';
+import type { Phase, SessionMode, TranscriptSegmentDto } from '@morrai/shared';
+import { PHASES } from '@morrai/shared';
 import type {
   ExaminerService,
   SessionAudio,

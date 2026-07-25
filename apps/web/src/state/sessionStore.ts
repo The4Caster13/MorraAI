@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Phase, SessionDto, SessionStatus, WsServerMessage } from '@parlons/shared';
+import type { Phase, SessionDto, SessionStatus, WsServerMessage } from '@morrai/shared';
 
 export interface CaptionLine {
   speaker: 'STUDENT' | 'EXAMINER';

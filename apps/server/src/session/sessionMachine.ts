@@ -1,4 +1,4 @@
-import type { SessionStatus } from '@parlons/shared';
+import type { SessionStatus } from '@morrai/shared';
 
 const TRANSITIONS: Record<SessionStatus, SessionStatus[]> = {
   DRAFT: ['CONSENTED', 'ABANDONED'],

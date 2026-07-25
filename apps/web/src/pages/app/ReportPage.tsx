@@ -18,8 +18,8 @@ import type {
   ScoreDto,
   SessionDto,
   TranscriptSegmentDto,
-} from '@parlons/shared';
-import { CRITERION_MAX } from '@parlons/shared';
+} from '@morrai/shared';
+import { CRITERION_MAX } from '@morrai/shared';
 import { api } from '../../lib/api';
 import { ensureUserId } from '../../lib/profile';
 import { themeContent } from '../../lib/themeContent';

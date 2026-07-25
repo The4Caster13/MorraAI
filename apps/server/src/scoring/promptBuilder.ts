@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PHASES } from '@parlons/shared';
+import { PHASES } from '@morrai/shared';
 import type { ScoreSessionInput } from '../examiner/ExaminerService.js';
 import { CRITERIA_DESCRIPTIONS, SCORING_PERSONA } from './rubricDescriptors.js';
 

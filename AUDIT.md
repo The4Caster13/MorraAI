@@ -1,4 +1,4 @@
-# Parlons — code audit against the PRD
+# Morrai — code audit against the PRD
 
 **Date:** 25 July 2026
 **Commit audited:** `d579dd4` (pre-fix) → `9cebc06` (post-fix)

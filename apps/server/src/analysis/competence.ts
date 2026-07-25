@@ -1,4 +1,4 @@
-import type { Criterion } from '@parlons/shared';
+import type { Criterion } from '@morrai/shared';
 import type { LanguageMetrics } from './languageMetrics.js';
 import type { SpeechActivity } from './speechActivity.js';
 

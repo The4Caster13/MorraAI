@@ -1,4 +1,4 @@
-# PRD — "Parlons" : AI Mock Individual Oral (IO) Practice App for IB French B
+# PRD — "Morrai" : AI Mock Individual Oral (IO) Practice App for IB French B
 
 **Version:** 0.1 (Draft)
 **Author:** [You] + Claude
@@ -11,7 +11,7 @@
 
 IB French B students sit a high-stakes Individual Oral (IO) worth 25% of their final grade, yet most get only one or two full mock IOs with a teacher before the real exam. Practice is scarce because it requires a fluent examiner, 15–20 minutes of 1-on-1 time, and expert knowledge of the IB rubric.
 
-**Parlons** is a web app that lets any French B student run a complete, realistic mock IO on demand. An AI examiner presents a visual stimulus drawn from the five IB themes, listens to the student's live spoken presentation, asks adaptive follow-up questions calibrated to the student's demonstrated level, and returns a full mark breakdown against the official IB assessment criteria — with actionable feedback on language, message, and interactive skills.
+**Morrai** is a web app that lets any French B student run a complete, realistic mock IO on demand. An AI examiner presents a visual stimulus drawn from the five IB themes, listens to the student's live spoken presentation, asks adaptive follow-up questions calibrated to the student's demonstrated level, and returns a full mark breakdown against the official IB assessment criteria — with actionable feedback on language, message, and interactive skills.
 
 ### Who it's for
 

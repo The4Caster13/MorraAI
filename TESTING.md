@@ -1,4 +1,4 @@
-# Testing Parlons
+# Testing Morrai
 
 A practical guide to running the app end-to-end. Written for demo/hackathon use — the
 fastest path first, the realistic path second.
@@ -21,8 +21,8 @@ Prisma needs a real Postgres. Fastest option is a free Supabase project:
 Any Postgres works. Local Docker is fine too:
 
 ```bash
-docker run -d --name parlons-db -e POSTGRES_PASSWORD=parlons -p 5432:5432 postgres:16
-# DATABASE_URL="postgresql://postgres:parlons@localhost:5432/postgres"
+docker run -d --name morrai-db -e POSTGRES_PASSWORD=morrai -p 5432:5432 postgres:16
+# DATABASE_URL="postgresql://postgres:morrai@localhost:5432/postgres"
 ```
 
 `DIRECT_URL` is optional — it defaults to `DATABASE_URL`. You only need to set it separately
@@ -280,7 +280,7 @@ select table_name from information_schema.tables
 where table_schema = 'public' order by table_name;
 ```
 
-*If you see the seven Parlons tables* (`User`, `Stimulus`, `Session`, `TranscriptSegment`,
+*If you see the seven Morrai tables* (`User`, `Stimulus`, `Session`, `TranscriptSegment`,
 `AudioFile`, `Score`, `ConsentRecord`) — the schema is already correct and only the
 bookkeeping is missing. Record it as applied without re-running the SQL:
 

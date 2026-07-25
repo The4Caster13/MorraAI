@@ -1,5 +1,5 @@
 import { Clock, MicOff } from 'lucide-react';
-import { MAX_NOTEPAD_BULLETS } from '@parlons/shared';
+import { MAX_NOTEPAD_BULLETS } from '@morrai/shared';
 import type { CaptionLine, Competence } from '../state/sessionStore';
 import { formatTime } from './ui';
 

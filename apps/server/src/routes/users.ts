@@ -1,5 +1,5 @@
 import type { FastifyPluginAsync } from 'fastify';
-import { createUserRequestSchema } from '@parlons/shared';
+import { createUserRequestSchema } from '@morrai/shared';
 import { userRepo } from '../db/repositories/index.js';
 
 export const userRoutes: FastifyPluginAsync = async (app) => {

@@ -1,4 +1,4 @@
--- Parlons initial schema.
+-- Morrai initial schema.
 --
 -- Hand-written to match apps/server/prisma/schema.prisma so that
 -- `prisma migrate deploy` works against a fresh Supabase database without an

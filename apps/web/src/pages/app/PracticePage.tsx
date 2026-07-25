@@ -8,7 +8,7 @@ import {
   QUESTIONING_SECONDS_TOTAL,
   type SessionMode,
   type Theme,
-} from '@parlons/shared';
+} from '@morrai/shared';
 import { api } from '../../lib/api';
 import { ensureUserId, getStoredDisplayName, saveProfile } from '../../lib/profile';
 import { THEME_CONTENT } from '../../lib/themeContent';

@@ -1,10 +1,10 @@
-# Parlons
+# Morrai
 
 AI mock **Individual Oral (IO)** practice for IB French B (SL). A student runs a full,
 timed mock exam on demand: visual stimulus → 15-minute prep → 3–4 minute presentation →
 adaptive examiner questions → a scored report against paraphrased IB-style criteria.
 
-> Parlons is not affiliated with or endorsed by the IB. All marks are practice
+> Morrai is not affiliated with or endorsed by the IB. All marks are practice
 > estimates, never official predicted grades.
 
 ## Status
@@ -45,13 +45,13 @@ distant Supabase region measured **1.1–3.5 seconds**; local Postgres measured 
 ```bash
 brew install postgresql@17
 brew services start postgresql@17
-createdb parlons
+createdb morrai
 ```
 
 ```
 # .env
-DATABASE_URL=postgresql://YOUR_OS_USERNAME@localhost:5432/parlons
-DIRECT_URL=postgresql://YOUR_OS_USERNAME@localhost:5432/parlons
+DATABASE_URL=postgresql://YOUR_OS_USERNAME@localhost:5432/morrai
+DIRECT_URL=postgresql://YOUR_OS_USERNAME@localhost:5432/morrai
 ```
 
 Homebrew's default cluster uses peer auth keyed to your OS username (`whoami`) — there is no
@@ -136,8 +136,8 @@ at Supabase (or any reachable hosted Postgres) in the deployment's environment, 
 region close to your actual users this time (see "Why local Postgres" above).
 
 ```bash
-docker build -t parlons .
-docker run -p 3001:3001 --env-file .env -e NODE_ENV=production parlons
+docker build -t morrai .
+docker run -p 3001:3001 --env-file .env -e NODE_ENV=production morrai
 ```
 
 Migrations are deliberately **not** run on container boot — apply them as a separate step

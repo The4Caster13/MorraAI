@@ -21,7 +21,7 @@ export function bandForMark(criterion: Criterion, mark: number): BandLabel {
 }
 
 export const DISCLAIMER_FR =
-  "Ceci est une estimation d'entraînement générée par une IA. Parlons n'est ni affilié ni approuvé par l'IB. Ces notes ne sont pas une prédiction officielle de résultat.";
+  "Ceci est une estimation d'entraînement générée par une IA. Morrai n'est ni affilié ni approuvé par l'IB. Ces notes ne sont pas une prédiction officielle de résultat.";
 
 export const DISCLAIMER_EN =
-  'This is an AI-generated practice estimate. Parlons is not affiliated with or endorsed by the IB. These marks are not an official predicted grade.';
+  'This is an AI-generated practice estimate. Morrai is not affiliated with or endorsed by the IB. These marks are not an official predicted grade.';

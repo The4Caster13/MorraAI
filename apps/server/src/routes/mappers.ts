@@ -1,6 +1,6 @@
 import type { Prisma } from '@prisma/client';
-import type { ScoreDto, SessionDto, SessionSummaryDto, StimulusDto } from '@parlons/shared';
-import { deliverySchema, DISCLAIMER_FR, notepadBulletsSchema } from '@parlons/shared';
+import type { ScoreDto, SessionDto, SessionSummaryDto, StimulusDto } from '@morrai/shared';
+import { deliverySchema, DISCLAIMER_FR, notepadBulletsSchema } from '@morrai/shared';
 
 type StimulusRow = Prisma.StimulusGetPayload<object>;
 type SessionRow = Prisma.SessionGetPayload<{ include: { stimulus: true } }>;
