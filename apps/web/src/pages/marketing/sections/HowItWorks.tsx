@@ -24,7 +24,7 @@ const STEPS = [
   {
     n: '04',
     title: 'Discussion (4–5 min)',
-    desc: 'The examiner asks about your presentation, referencing things you actually said. Ask “pouvez-vous répéter ?” any time.',
+    desc: 'The examiner asks about your presentation, referencing things you actually said. Ask it to repeat a question at any time.',
     color: '#059669',
   },
   {

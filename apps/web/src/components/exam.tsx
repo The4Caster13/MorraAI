@@ -1,6 +1,6 @@
 import { Clock, MicOff } from 'lucide-react';
 import { MAX_NOTEPAD_BULLETS } from '@parlons/shared';
-import type { CaptionLine } from '../state/sessionStore';
+import type { CaptionLine, Competence } from '../state/sessionStore';
 import { formatTime } from './ui';
 
 export function ExamHeader({
@@ -48,7 +48,7 @@ export function ExamHeader({
               style={{ boxShadow: '0 0 8px #ef4444' }}
               aria-hidden="true"
             />
-            <span className="text-xs font-medium text-red-400">EN COURS</span>
+            <span className="text-xs font-medium text-red-400">RECORDING</span>
           </span>
         )}
         <span className="flex items-center gap-1.5" role="timer" aria-live="off">
@@ -86,7 +86,7 @@ export function AudioMeter({ level }: { level: number }) {
       aria-valuenow={pct}
       aria-valuemin={0}
       aria-valuemax={100}
-      aria-label="Niveau du microphone"
+      aria-label="Microphone level"
     >
       <div
         className="h-full rounded-full transition-[width] duration-150"
@@ -96,16 +96,90 @@ export function AudioMeter({ level }: { level: number }) {
   );
 }
 
+/**
+ * Live view of what the examiner has measured and how it is adapting.
+ *
+ * The adaptive loop is otherwise invisible: the questions simply get harder or
+ * easier, which is impossible to attribute while you are busy answering them.
+ * Showing the signals makes the behaviour legible.
+ *
+ * The level arrives from the server in French — it is also fed verbatim into
+ * the examiner's prompt — so it is mapped to English for display here rather
+ * than changed at the source.
+ */
+const LEVEL_DISPLAY: Record<
+  Competence['level'],
+  { label: string; pitch: string; color: string }
+> = {
+  fragile: {
+    label: 'Building',
+    pitch: 'short, concrete questions in the present tense',
+    color: '#f59e0b',
+  },
+  intermédiaire: {
+    label: 'Intermediate',
+    pitch: 'open questions that invite you to develop your ideas',
+    color: '#3b82f6',
+  },
+  fort: {
+    label: 'Strong',
+    pitch: 'abstract and hypothetical questions (conditional, subjunctive)',
+    color: '#22c55e',
+  },
+};
+
+export function AdaptationPanel({ competence }: { competence: Competence | null }) {
+  const level = competence?.level ?? 'intermédiaire';
+  const { label, pitch, color } = LEVEL_DISPLAY[level];
+
+  return (
+    <section
+      className="rounded-xl px-4 py-3"
+      style={{ background: `${color}12`, border: `1px solid ${color}33` }}
+      aria-live="polite"
+    >
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+        <h2 className="text-xs font-semibold uppercase tracking-widest" style={{ color }}>
+          Level detected: {label}
+        </h2>
+      </div>
+      <p className="mt-1 text-[11px] leading-snug text-slate-400">Examiner is asking {pitch}.</p>
+      {competence && (
+        <dl className="mt-2 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[11px] tabular-nums text-slate-300">
+          <div>
+            <dt className="inline text-slate-500">pace </dt>
+            <dd className="inline font-semibold">
+              {competence.wordsPerMinute === null ? '—' : `${competence.wordsPerMinute} wpm`}
+            </dd>
+          </div>
+          <div>
+            <dt className="inline text-slate-500">pauses </dt>
+            <dd className="inline font-semibold">{competence.pauseCount}</dd>
+          </div>
+          <div>
+            <dt className="inline text-slate-500">fillers </dt>
+            <dd className="inline font-semibold">{competence.fillerRate}/100w</dd>
+          </div>
+          <div>
+            <dt className="inline text-slate-500">tenses </dt>
+            <dd className="inline font-semibold">{competence.tenseVariety}</dd>
+          </div>
+        </dl>
+      )}
+    </section>
+  );
+}
+
 export function DarkCaptionStream({ lines }: { lines: CaptionLine[] }) {
   return (
     <div
       className="min-h-[8rem] flex-1 space-y-2.5 overflow-y-auto rounded-xl p-4"
       style={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}
       aria-live="polite"
-      aria-label="Transcription en direct"
+      aria-label="Live transcript"
     >
       {lines.length === 0 && (
-        <p className="text-xs text-slate-500">La transcription apparaîtra ici.</p>
+        <p className="text-xs text-slate-500">The transcript will appear here.</p>
       )}
       {lines.map((line, i) => (
         <p key={i} className="text-sm leading-relaxed">
@@ -114,7 +188,7 @@ export function DarkCaptionStream({ lines }: { lines: CaptionLine[] }) {
               line.speaker === 'EXAMINER' ? 'text-brand-bright' : 'text-slate-200'
             }`}
           >
-            {line.speaker === 'EXAMINER' ? 'Examinateur' : 'Vous'} :{' '}
+            {line.speaker === 'EXAMINER' ? 'Examiner' : 'You'}:{' '}
           </span>
           <span className={line.isFinal ? 'text-slate-300' : 'italic text-slate-500'}>
             {line.text}
@@ -143,7 +217,7 @@ export function DarkNotepad({
   return (
     <div className="space-y-3">
       <div className="flex items-baseline justify-between">
-        <h2 className="text-sm font-bold text-white">Vos notes</h2>
+        <h2 className="text-sm font-bold text-white">Your notes</h2>
         <span className="text-xs text-slate-500">
           {bullets.length}/{MAX_NOTEPAD_BULLETS} points
         </span>
@@ -166,7 +240,7 @@ export function DarkNotepad({
             <button
               type="button"
               onClick={() => onChange(bullets.filter((_, idx) => idx !== i))}
-              aria-label={`Supprimer le point ${i + 1}`}
+              aria-label={`Delete point ${i + 1}`}
               className="rounded px-2 py-1 text-sm text-slate-500 hover:text-red-400"
             >
               ×
@@ -186,7 +260,7 @@ export function DarkNotepad({
 
       {bullets.length >= MAX_NOTEPAD_BULLETS && (
         <p className="text-xs text-amber-300">
-          Limite de {MAX_NOTEPAD_BULLETS} points atteinte, comme lors du véritable examen.
+          {MAX_NOTEPAD_BULLETS}-point limit reached, exactly as in the real exam.
         </p>
       )}
     </div>
@@ -195,10 +269,10 @@ export function DarkNotepad({
 
 export function PrepTips({ accent }: { accent: string }) {
   const tips = [
-    'Décrivez ce que vous voyez',
-    'Faites un lien avec le thème',
-    'Reliez à la culture francophone',
-    'Donnez votre opinion',
+    'Describe what you can see',
+    'Link it to the theme',
+    'Connect it to francophone culture',
+    'Give your own opinion',
   ];
   return (
     <div

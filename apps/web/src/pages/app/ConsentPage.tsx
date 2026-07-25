@@ -10,15 +10,15 @@ const CONSENT_TEXT_VERSION = '2026-07-25.v1';
 const POINTS = [
   {
     icon: Mic,
-    text: "Votre micro n'enregistre que pendant les parties orales de la session.",
+    text: 'Your microphone only records during the spoken parts of the session.',
   },
   {
     icon: ShieldCheck,
-    text: "L'enregistrement et la transcription servent à produire votre rapport et à vous réécouter. Ils ne sont jamais utilisés pour entraîner une IA.",
+    text: 'The recording and transcript are used to produce your report and to let you listen back. They are never used to train an AI.',
   },
   {
     icon: Trash2,
-    text: 'Vous pouvez supprimer définitivement une session — audio et transcription compris — depuis le rapport ou votre historique.',
+    text: 'You can permanently delete a session — recording and transcript included — from the report or your history.',
   },
 ];
 
@@ -56,14 +56,14 @@ export function ConsentPage() {
             to="/practice"
             className="flex items-center gap-2 text-sm text-slate-400 transition-colors hover:text-white"
           >
-            <ArrowLeft size={16} /> Modifier la configuration
+            <ArrowLeft size={16} /> Change setup
           </Link>
           <Logo size="sm" dark />
         </div>
 
         <h1 className="mb-2 font-display text-3xl font-black text-white">Avant de commencer</h1>
         <p className="mb-8 text-slate-400">
-          Pour simuler l'oral, Morra AI a besoin d'enregistrer votre voix. Voici exactement ce qui
+          To simulate the oral, Morra AI needs to record your voice. Here is exactly what
           se passe.
         </p>
 
@@ -85,7 +85,7 @@ export function ConsentPage() {
           className="mb-8 rounded-xl px-4 py-3 text-sm leading-relaxed text-amber-200"
           style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.25)' }}
         >
-          Si vous avez moins de 18 ans, parlez-en à un parent ou à un enseignant avant de
+          If you are under 18, speak to a parent or teacher before
           continuer.
         </p>
 
@@ -98,7 +98,7 @@ export function ConsentPage() {
               onChange={(e) => setRecording(e.target.checked)}
               className="mt-0.5 h-4 w-4 accent-brand"
             />
-            <span>J'accepte que ma voix soit enregistrée pendant cette session.</span>
+            <span>I agree to my voice being recorded during this session.</span>
           </label>
           <label className="flex cursor-pointer items-start gap-3 text-sm text-slate-300">
             <input
@@ -108,7 +108,7 @@ export function ConsentPage() {
               className="mt-0.5 h-4 w-4 accent-brand"
             />
             <span>
-              Je comprends que l'enregistrement est conservé jusqu'à ce que je le supprime.
+              I understand the recording is kept until I delete it.
             </span>
           </label>
         </fieldset>

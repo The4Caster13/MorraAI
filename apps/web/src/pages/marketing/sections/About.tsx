@@ -11,7 +11,7 @@ const FEATURES = [
   {
     icon: Volume2,
     title: 'Live mock IO',
-    desc: 'The full exam shape: 15 minutes of prep with a 10-bullet notepad, then a timed presentation and discussion.',
+    desc: 'The full exam shape: 10 minutes of prep with a 10-bullet notepad, then a timed presentation and discussion.',
   },
   {
     icon: Brain,

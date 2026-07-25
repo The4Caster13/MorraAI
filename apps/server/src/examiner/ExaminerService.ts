@@ -71,23 +71,6 @@ export interface ScoreSessionInput {
   stimulus: StimulusContext;
   mode: SessionMode;
   sttConfidenceSummary: { avg: number | null; lowConfidenceSegmentIds: string[] };
-<<<<<<< Updated upstream
-  /**
-   * Measured delivery. A transcript cannot show pace, hesitation or pausing,
-   * all of which Criterion A explicitly assesses — without this the model is
-   * guessing at fluency from punctuation.
-   */
-  delivery?: {
-    wordsPerMinute: number | null;
-    speechMs: number;
-    pauseCount: number;
-    longestPauseMs: number;
-    fillerRate: number;
-    tenseVariety: number;
-    subordinationRate: number;
-    lexicalDiversity: number;
-  };
-=======
   /** The student's own recordings, oldest phase first. May be empty. */
   audio: SessionAudio[];
 }
@@ -113,7 +96,6 @@ export interface DeliveryAssessment {
 export interface TranscribedTurn {
   phase: Phase;
   text: string;
->>>>>>> Stashed changes
 }
 
 export interface ScoreSessionResult {

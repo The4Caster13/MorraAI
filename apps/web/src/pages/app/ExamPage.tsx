@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Award, Mic, MicOff, Play, RefreshCw } from 'lucide-react';
-import type { SessionDto } from '@parlons/shared';
+import { PART1_SECONDS_CAP, type SessionDto } from '@parlons/shared';
 import { api } from '../../lib/api';
 import { ensureUserId } from '../../lib/profile';
 import { themeContent } from '../../lib/themeContent';
@@ -9,6 +9,7 @@ import { useWebSocketClient } from '../../hooks/useWebSocketClient';
 import { useMicCapture } from '../../hooks/useMicCapture';
 import { useSessionStore } from '../../state/sessionStore';
 import {
+  AdaptationPanel,
   AudioMeter,
   DarkCaptionStream,
   DarkNotepad,
@@ -36,6 +37,7 @@ export function ExamPage() {
   const showQuestionText = useSessionStore((s) => s.showQuestionText);
   const setShowQuestionText = useSessionStore((s) => s.setShowQuestionText);
   const part1HardStopped = useSessionStore((s) => s.part1HardStopped);
+  const competence = useSessionStore((s) => s.competence);
   const complete = useSessionStore((s) => s.complete);
   const error = useSessionStore((s) => s.error);
   const reset = useSessionStore((s) => s.reset);
@@ -85,19 +87,19 @@ export function ExamPage() {
   const phaseTitle = (): string => {
     switch (status) {
       case 'CONSENTED':
-        return 'Prêt à commencer';
+        return 'Ready to begin';
       case 'PREP':
-        return 'Préparation';
+        return 'Preparation';
       case 'PART1_INTRO':
       case 'PART1_RECORDING':
       case 'PART1_CLOSING':
-        return 'Partie 1 — Présentation';
+        return 'Part 1 — Presentation';
       case 'PART2_QA':
-        return 'Partie 2 — Discussion du stimulus';
+        return 'Part 2 — Stimulus discussion';
       case 'PART3_QA':
-        return 'Partie 3 — Conversation générale';
+        return 'Part 3 — General conversation';
       case 'SCORING':
-        return 'Évaluation';
+        return 'Marking';
       default:
         return 'Session';
     }
@@ -106,7 +108,7 @@ export function ExamPage() {
   if (!session || !content) {
     return (
       <div className="on-dark flex min-h-screen items-center justify-center bg-navy-deep text-slate-400">
-        <p>Chargement de la session…</p>
+        <p>Loading session…</p>
       </div>
     );
   }
@@ -119,7 +121,7 @@ export function ExamPage() {
       <ExamHeader
         themeLabel={content.label}
         accent={accent}
-        modeLabel={isPractice ? 'Entraînement' : 'Examen'}
+        modeLabel={isPractice ? 'Practice' : 'Exam'}
         remainingMs={remainingMs}
         recording={recordingActive}
         phaseTitle={phaseTitle()}
@@ -157,7 +159,7 @@ export function ExamPage() {
           style={{ borderColor: 'rgba(255,255,255,0.06)', background: '#0a1628' }}
         >
           <p className="text-xs text-slate-500" aria-live="polite">
-            {connected ? 'Connecté à l’examinateur' : 'Connexion…'}
+            {connected ? 'Connected to the examiner' : 'Connecting…'}
           </p>
 
           {error && <ErrorNote dark>{error.message}</ErrorNote>}
@@ -169,7 +171,7 @@ export function ExamPage() {
                 border: '1px solid rgba(245,158,11,0.25)',
               }}
             >
-              Micro indisponible : {micError}
+              Microphone unavailable: {micError}
             </p>
           )}
 
@@ -177,11 +179,11 @@ export function ExamPage() {
             <div className="flex flex-1 flex-col justify-center gap-5 text-center">
               <div>
                 <h2 className="mb-2 font-display text-xl font-bold text-white">
-                  Tout est prêt
+                  You're all set
                 </h2>
                 <p className="text-sm leading-relaxed text-slate-400">
-                  Vous aurez {Math.round(session.prepSecondsAllotted / 600)} minutes de préparation,
-                  puis 10 minutes de présentation avant les questions de l'examinateur.
+                  You'll get {Math.round(session.prepSecondsAllotted / 60)} minutes to prepare, then a{' '}
+                  {PART1_SECONDS_CAP / 60} minute presentation before the examiner's questions.
                 </p>
               </div>
               <Button
@@ -190,7 +192,7 @@ export function ExamPage() {
                 full
                 onClick={() => send({ type: 'client:startPhase', phase: 'PART1' })}
               >
-                <Play size={16} /> Démarrer la préparation
+                <Play size={16} /> Start preparation
               </Button>
             </div>
           )}
@@ -204,7 +206,7 @@ export function ExamPage() {
                 >
                   {remainingMs === null ? '—' : formatTime(remainingMs)}
                 </div>
-                <p className="text-xs text-slate-400">Temps de préparation</p>
+                <p className="text-xs text-slate-400">Preparation time</p>
               </div>
 
               <PrepTips accent={accent} />
@@ -225,11 +227,11 @@ export function ExamPage() {
                   full
                   onClick={() => send({ type: 'client:startPhase', phase: 'PART1' })}
                 >
-                  <Mic size={16} /> Je suis prêt — présenter
+                  <Mic size={16} /> I'm ready — present
                 </Button>
                 {isPractice && (
                   <Button variant="ghost-dark" full onClick={() => send({ type: 'client:skipPrep' })}>
-                    Passer la préparation
+                    Skip preparation
                   </Button>
                 )}
               </div>
@@ -239,8 +241,10 @@ export function ExamPage() {
           {isPart1 && (
             <>
               <div>
-                <h2 className="text-lg font-bold text-white">Présentation en cours</h2>
-                <p className="text-xs text-slate-400">Parlez pendant 10 minutes.</p>
+                <h2 className="text-lg font-bold text-white">Presentation in progress</h2>
+                <p className="text-xs text-slate-400">
+                  Speak for {PART1_SECONDS_CAP / 60} minutes.
+                </p>
               </div>
 
               <div
@@ -261,7 +265,7 @@ export function ExamPage() {
               {bullets.filter(Boolean).length > 0 && (
                 <div>
                   <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                    Vos notes
+                    Your notes
                   </h3>
                   <ul className="space-y-1">
                     {bullets.filter(Boolean).map((b, i) => (
@@ -285,7 +289,7 @@ export function ExamPage() {
                   }}
                   role="status"
                 >
-                  L'examinateur vous a interrompu — les 4 minutes sont écoulées.
+                  The examiner has stopped you — your {PART1_SECONDS_CAP / 60} minutes are up.
                 </p>
               )}
 
@@ -302,7 +306,7 @@ export function ExamPage() {
                   disabled={status !== 'PART1_RECORDING' || finishing}
                 >
                   <MicOff size={16} />
-                  {finishing ? 'Fin de la présentation…' : "J'ai terminé ma présentation"}
+                  {finishing ? 'Finishing…' : "I've finished my presentation"}
                 </Button>
               </div>
             </>
@@ -323,11 +327,12 @@ export function ExamPage() {
                   }
                   aria-live="polite"
                 >
-                  {examinerSpeaking ? "L'examinateur parle…" : 'À vous'}
+                  {examinerSpeaking ? 'The examiner is speaking…' : 'Your turn'}
                 </span>
               </div>
 
               <AudioMeter level={level} />
+              <AdaptationPanel competence={competence} />
 
               {isPractice && (
                 <label className="flex cursor-pointer items-center gap-2 text-xs text-slate-300">
@@ -340,7 +345,7 @@ export function ExamPage() {
                     }}
                     className="h-4 w-4 accent-brand"
                   />
-                  Afficher le texte des questions
+                  Show question text
                 </label>
               )}
 
@@ -348,19 +353,19 @@ export function ExamPage() {
 
               <div className="flex flex-col gap-2">
                 <Button variant="ghost-dark" full onClick={() => send({ type: 'client:requestRephrase' })}>
-                  <RefreshCw size={15} /> Pouvez-vous répéter ?
+                  <RefreshCw size={15} /> Could you repeat that?
                 </Button>
                 <Button
                   variant="danger"
                   full
                   disabled={ending}
                   onClick={() => {
-                    if (!confirm('Terminer la session maintenant ?')) return;
+                    if (!confirm('End the session now?')) return;
                     setEnding(true);
                     send({ type: 'client:endSessionEarly' });
                   }}
                 >
-                  {ending ? 'Fin de session…' : 'Terminer la session'}
+                  {ending ? 'Ending…' : 'End session'}
                 </Button>
               </div>
 
@@ -378,8 +383,8 @@ export function ExamPage() {
                     type="text"
                     value={debugText}
                     onChange={(e) => setDebugText(e.target.value)}
-                    placeholder="Répondre par écrit (sans micro)"
-                    aria-label="Réponse écrite"
+                    placeholder="Answer in writing (no mic)"
+                    aria-label="Written answer"
                     className="min-w-0 flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none placeholder:text-slate-500 focus:border-brand"
                   />
                   <Button type="submit" variant="accent" accent={accent}>
@@ -394,9 +399,9 @@ export function ExamPage() {
             <div className="flex flex-1 flex-col items-center justify-center gap-4 text-center">
               <Award size={32} style={{ color: accent }} aria-hidden="true" />
               <div>
-                <h2 className="mb-1 font-display text-xl font-bold text-white">Oral terminé</h2>
+                <h2 className="mb-1 font-display text-xl font-bold text-white">Oral complete</h2>
                 <p className="text-sm text-slate-400" aria-live="polite">
-                  L'examinateur analyse votre transcription…
+                  The examiner is marking your oral…
                 </p>
               </div>
               <div className="recording-wave flex items-end gap-0" style={{ height: 24 }} aria-hidden="true">

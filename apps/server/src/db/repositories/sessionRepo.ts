@@ -7,7 +7,11 @@ export const sessionRepo = {
     stimulusId: string;
     mode: string;
     prepSecondsAllotted: number;
+    presentationSecondsCap: number;
   }) {
+    // presentationSecondsCap is passed explicitly rather than left to the column
+    // default, so the timing stays correct on a database whose migration for the
+    // new default hasn't been applied.
     return prisma.session.create({ data, include: { stimulus: true } });
   },
   findById(id: string) {

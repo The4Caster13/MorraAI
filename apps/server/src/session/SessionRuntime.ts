@@ -398,10 +398,15 @@ export class SessionRuntime {
     await this.serialize(async () => {
       if (isTerminal(this.status) || this.status === 'SCORING') return;
 
-      // Part 3 is the last phase, so finishing it is a complete exam to score.
-      if (this.status === 'PART3_QA') {
+      // Both Q&A phases are worth scoring. Part 3 is a complete exam; stopping
+      // during Part 2 still leaves a presentation and a discussion behind, which
+      // is a useful report so long as it says the session was cut short.
+      // Discarding it would lose the whole attempt over a single click.
+      if (this.status === 'PART2_QA' || this.status === 'PART3_QA') {
+        const phase = this.status === 'PART2_QA' ? 'PART2' : 'PART3';
+        if (phase === 'PART2') this.endedEarlyAt = 'PART2';
         this.stopCountdown();
-        await this.closePhase('PART3');
+        await this.closePhase(phase);
         await this.finishAndScoreLocked();
         return;
       }
@@ -414,22 +419,8 @@ export class SessionRuntime {
     this.stopCountdown();
     const phase = phaseForStatus(this.status);
     if (phase) await this.closePhase(phase);
-<<<<<<< Updated upstream
-
-    // Score from any Q&A phase. A student who stops after Part 2 has still
-    // produced a presentation and a discussion — enough for a useful report,
-    // provided it says plainly that the session was cut short.
-    if (this.status === 'PART2_QA' || this.status === 'PART3_QA') {
-      this.endedEarlyAt = this.status === 'PART2_QA' ? 'PART2' : 'PART3';
-      await this.finishAndScore();
-      return;
-    }
-
-    await this.setStatus('ABANDONED');
-=======
     if (isTerminal(this.status)) return;
     this.setStatus('ABANDONED');
->>>>>>> Stashed changes
     await this.cleanup();
   }
 
@@ -442,7 +433,6 @@ export class SessionRuntime {
       await scoreAndPersist(this.sessionId, this.stimulus, this.mode, this.examiner, {
         lowConfidenceSegments: this.lowConfidenceSegments,
         endedEarlyAt: this.endedEarlyAt,
-        delivery: this.competence().delivery,
       });
       this.setStatus('COMPLETE');
       this.emit({ type: 'server:sessionComplete', sessionId: this.sessionId });

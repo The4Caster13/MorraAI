@@ -1,17 +1,10 @@
 import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-<<<<<<< Updated upstream
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { createClient, type SupabaseClient } from '@supabase/supabase-js';
-import { env, storageMode } from '../config/env.js';
-=======
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createClient, type SupabaseClient } from '@supabase/supabase-js';
 import { env, storageMode } from '../config/env.js';
 
 const repoRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
->>>>>>> Stashed changes
 
 /**
  * Session audio storage.
@@ -40,22 +33,12 @@ export function audioPath(sessionId: string, phase: string, speaker: string): st
 class SupabaseStorageService implements StorageService {
   private client: SupabaseClient;
 
-<<<<<<< Updated upstream
-  constructor(private bucket: string) {
-    // Only constructed when storageMode() reports 'supabase', which is exactly
-    // the condition that both of these are set.
-    if (!env.SUPABASE_URL || !env.SUPABASE_SERVICE_ROLE_KEY) {
-      throw new Error('SupabaseStorageService requires SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY');
-    }
-    this.client = createClient(env.SUPABASE_URL, env.SUPABASE_SERVICE_ROLE_KEY, {
-=======
   constructor(
     private bucket: string,
     supabaseUrl: string,
     supabaseServiceRoleKey: string,
   ) {
     this.client = createClient(supabaseUrl, supabaseServiceRoleKey, {
->>>>>>> Stashed changes
       auth: { persistSession: false, autoRefreshToken: false },
     });
   }
@@ -87,35 +70,6 @@ class SupabaseStorageService implements StorageService {
   }
 }
 
-<<<<<<< Updated upstream
-/** Repo root — `apps/server/src/storage` → four levels up. */
-const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
-const localAudioRoot = path.join(repoRoot, 'storage');
-
-class LocalDiskStorageService implements StorageService {
-  private resolve(objectPath: string): string {
-    // audioPath() builds these, but guard anyway — this joins into a filesystem path.
-    const full = path.resolve(localAudioRoot, objectPath);
-    if (!full.startsWith(localAudioRoot + path.sep)) {
-      throw new Error(`Refusing to write outside the audio directory: ${objectPath}`);
-    }
-    return full;
-  }
-
-  async uploadAudio(objectPath: string, wav: Buffer): Promise<void> {
-    const full = this.resolve(objectPath);
-    await mkdir(path.dirname(full), { recursive: true });
-    await writeFile(full, wav);
-  }
-
-  async downloadAudio(objectPath: string): Promise<Buffer> {
-    return readFile(this.resolve(objectPath));
-  }
-
-  async deleteSessionAudio(sessionId: string): Promise<void> {
-    const dir = this.resolve(path.join('sessions', sessionId.toLowerCase()));
-    await rm(dir, { recursive: true, force: true });
-=======
 /**
  * Local-disk backend for development against a local Postgres, where there's
  * no Supabase project to hold audio either. Writes under `storage/audio/` at
@@ -143,20 +97,12 @@ class LocalStorageService implements StorageService {
       recursive: true,
       force: true,
     });
->>>>>>> Stashed changes
   }
 }
 
 let instance: StorageService | null = null;
 
 export function getStorageService(): StorageService {
-<<<<<<< Updated upstream
-  if (!instance) {
-    instance =
-      storageMode() === 'supabase'
-        ? new SupabaseStorageService(env.SUPABASE_AUDIO_BUCKET)
-        : new LocalDiskStorageService();
-=======
   if (instance) return instance;
   if (storageMode() === 'local') {
     const baseDir = env.LOCAL_AUDIO_DIR
@@ -174,7 +120,6 @@ export function getStorageService(): StorageService {
       env.SUPABASE_URL,
       env.SUPABASE_SERVICE_ROLE_KEY,
     );
->>>>>>> Stashed changes
   }
   return instance;
 }

@@ -137,8 +137,10 @@ describe('mixed concurrent events', () => {
 
     await Promise.all([rt.finishPresentation(), rt.requestEnd()]);
 
-    // Either order is defensible; landing mid-transition or throwing is not.
-    expect(['PART2_QA', 'ABANDONED']).toContain(rt.getStatus());
+    // Any of these orderings is defensible; landing mid-transition or throwing
+    // is not. COMPLETE arises when the presentation finishes first and the end
+    // request then lands in Part 2, which is now scored rather than discarded.
+    expect(['PART2_QA', 'ABANDONED', 'SCORING', 'COMPLETE']).toContain(rt.getStatus());
     expect(errors.filter((e) => /Invalid session transition/.test(e))).toEqual([]);
     await rt.cleanup();
   });

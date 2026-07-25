@@ -173,20 +173,20 @@ Restart the server. `GET /api/health` reports which examiner is active. No code 
 are needed — the factory in [apps/server/src/examiner/index.ts](apps/server/src/examiner/index.ts)
 swaps `MockExaminerService` for `GeminiExaminerService`.
 
-<<<<<<< Updated upstream
-Live API models are preview-tier and are retired regularly. If `check:gemini` returns a 404,
-consult [the deprecations page](https://ai.google.dev/gemini-api/docs/deprecations) and
-update `GEMINI_LIVE_MODEL`.
-
-See [TESTING.md](TESTING.md) for the full step-by-step.
-=======
 **Model IDs drift.** `gemini-2.5-flash` was rejected for this project's key with `404 ... no
 longer available to new users` — confirmed directly against the account, not just documentation.
 `GEMINI_SCORING_MODEL` defaults to `gemini-3.5-flash`; if that also 404s later, run
 `ai.models.list()` and filter for `generateContent` support to find a current one. Aliases like
 `gemini-flash-latest` are not a safe workaround — it resolved to the same deprecated `2.5-flash`
 snapshot when tested.
->>>>>>> Stashed changes
+
+The same applies to the Live model. `npm run check:gemini` verifies the configured one,
+retries it with an explicit voice, then probes known alternatives and prints the one to use.
+Against this project's key, `gemini-3.1-flash-live-preview` returned audio at 689 ms to first
+byte, while `gemini-2.5-flash-native-audio-preview-09-2025` does not exist in Google's model
+list at all.
+
+See [TESTING.md](TESTING.md) for the full step-by-step.
 
 Note: Gemini Live sessions are opened **per exam phase** rather than once per exam, because
 audio sessions are capped near 15 minutes — close to the total spoken exam time. Cross-phase

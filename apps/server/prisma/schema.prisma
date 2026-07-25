@@ -40,7 +40,7 @@ model Session {
   status                 String              @default("DRAFT")
   currentPhase           String?
   prepSecondsAllotted    Int                 @default(900)
-  presentationSecondsCap Int                 @default(240)
+  presentationSecondsCap Int                 @default(600)
   notepadBullets         Json?
   startedAt              DateTime?
   endedAt                DateTime?

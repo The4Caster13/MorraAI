@@ -26,7 +26,7 @@ export function HistoryPage() {
 
   const remove = async (id: string) => {
     if (!userId) return;
-    if (!confirm('Supprimer définitivement cette session ?')) return;
+    if (!confirm('Permanently delete this session?')) return;
     await api.deleteSession(id, userId);
     setSessions((prev) => prev.filter((s) => s.id !== id));
   };
@@ -45,21 +45,21 @@ export function HistoryPage() {
             to="/"
             className="flex items-center gap-2 text-sm text-slate-400 transition-colors hover:text-white"
           >
-            <ArrowLeft size={16} /> Retour au site
+            <ArrowLeft size={16} /> Back to site
           </Link>
           <Logo size="sm" dark />
         </div>
 
         <h1 className="mb-2 font-display text-4xl font-black text-white">Mes sessions</h1>
         <p className="mb-10 text-slate-400">
-          Vos oraux sont enregistrés sur cet appareil uniquement.
+          Your orals are saved on this device only.
         </p>
 
-        {loading && <p className="text-sm text-slate-400">Chargement…</p>}
+        {loading && <p className="text-sm text-slate-400">Loading…</p>}
 
         {!loading && sessions.length === 0 && (
           <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-8 text-center">
-            <p className="mb-5 text-sm text-slate-300">Vous n'avez pas encore fait d'oral.</p>
+            <p className="mb-5 text-sm text-slate-300">You haven't done an oral yet.</p>
             <Link
               to="/practice"
               className="inline-flex rounded-full bg-brand px-6 py-3 text-sm font-semibold text-white transition-opacity hover:opacity-90"
@@ -102,7 +102,7 @@ export function HistoryPage() {
                 ))}
             </div>
             <p className="mt-3 text-center text-xs text-slate-500">
-              De la session la plus ancienne à la plus récente
+              Oldest session to most recent
             </p>
           </div>
         )}
@@ -120,7 +120,7 @@ export function HistoryPage() {
                     className="text-xs font-semibold uppercase tracking-wide"
                     style={{ color: content.color }}
                   >
-                    {content.label} · {s.mode === 'exam' ? 'Examen' : 'Entraînement'}
+                    {content.label} · {s.mode === 'exam' ? 'Exam' : 'Practice'}
                   </p>
                   <p className="text-sm font-medium text-white">{s.stimulusCaption}</p>
                   <p className="text-xs text-slate-500">
@@ -141,7 +141,7 @@ export function HistoryPage() {
                     Rapport
                   </Link>
                   <Button variant="danger" onClick={() => remove(s.id)}>
-                    Supprimer
+                    Delete
                   </Button>
                 </div>
               </div>

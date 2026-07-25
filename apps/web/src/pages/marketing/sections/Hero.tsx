@@ -19,17 +19,21 @@ export function Hero() {
   ]);
 
   const ref = useEntranceAnimation<HTMLElement>(() => {
-    gsap.from('.hero-badge', { opacity: 0, y: -16, duration: 0.6, ease: 'power3.out' });
-    gsap.from('.hero-headline', {
-      opacity: 0,
-      y: 32,
-      duration: 0.8,
-      ease: 'power3.out',
-      delay: 0.15,
-    });
-    gsap.from('.hero-sub', { opacity: 0, y: 20, duration: 0.7, ease: 'power3.out', delay: 0.35 });
-    gsap.from('.hero-cta', { opacity: 0, y: 16, duration: 0.6, ease: 'power3.out', delay: 0.5 });
-    gsap.from('.hero-stats', { opacity: 0, y: 16, duration: 0.6, ease: 'power3.out', delay: 0.65 });
+    // fromTo + clearProps, never `from`: a `from` tween holds the element at
+    // opacity 0 until it completes, so an interrupted animation would leave the
+    // landing page blank. clearProps removes the inline styles once it lands.
+    const rise = (selector: string, y: number, duration: number, delay: number) =>
+      gsap.fromTo(
+        selector,
+        { opacity: 0, y },
+        { opacity: 1, y: 0, duration, delay, ease: 'power3.out', clearProps: 'all' },
+      );
+
+    rise('.hero-badge', -16, 0.6, 0);
+    rise('.hero-headline', 32, 0.8, 0.15);
+    rise('.hero-sub', 20, 0.7, 0.35);
+    rise('.hero-cta', 16, 0.6, 0.5);
+    rise('.hero-stats', 16, 0.6, 0.65);
   });
 
   return (

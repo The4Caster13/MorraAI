@@ -71,14 +71,21 @@ export function useScrollReveal<T extends HTMLElement>(
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (!entry.isIntersecting) return;
-        gsap.from(el.querySelectorAll(childSelector), {
-          opacity: 0,
-          y,
-          x,
-          stagger,
-          duration: 0.65,
-          ease: 'power3.out',
-        });
+        // fromTo + clearProps so an interrupted tween can't strand content at
+        // opacity 0 — see the note in PracticePage.
+        gsap.fromTo(
+          el.querySelectorAll(childSelector),
+          { opacity: 0, y, x },
+          {
+            opacity: 1,
+            y: 0,
+            x: 0,
+            stagger,
+            duration: 0.65,
+            ease: 'power3.out',
+            clearProps: 'all',
+          },
+        );
         observer.disconnect();
       },
       { threshold: 0.12 },

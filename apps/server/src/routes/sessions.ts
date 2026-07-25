@@ -3,6 +3,7 @@ import { z } from 'zod';
 import {
   consentRequestSchema,
   createSessionRequestSchema,
+  PART1_SECONDS_CAP,
   PHASES,
   PREP_SECONDS_DEFAULT,
   SPEAKERS,
@@ -60,6 +61,7 @@ export const sessionRoutes: FastifyPluginAsync = async (app) => {
       stimulusId: stimulus.id,
       mode,
       prepSecondsAllotted: prep,
+      presentationSecondsCap: PART1_SECONDS_CAP,
     });
     return reply.code(201).send(toSessionDto(session));
   });

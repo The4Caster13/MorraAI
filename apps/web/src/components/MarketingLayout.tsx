@@ -101,7 +101,7 @@ function Navbar() {
           className="md:hidden"
           onClick={() => setMenuOpen((o) => !o)}
           aria-expanded={menuOpen}
-          aria-label={menuOpen ? 'Fermer le menu' : 'Ouvrir le menu'}
+          aria-label={menuOpen ? 'Close menu' : 'Open menu'}
         >
           {menuOpen ? <X size={20} className="text-navy" /> : <Menu size={20} className="text-navy" />}
         </button>

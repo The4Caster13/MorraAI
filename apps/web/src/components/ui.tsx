@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import { Link } from 'react-router-dom';
 import { Brain } from 'lucide-react';
-import { DISCLAIMER_FR } from '@parlons/shared';
+import { DISCLAIMER_EN } from '@parlons/shared';
 
 export function formatTime(ms: number): string {
   const total = Math.max(0, Math.ceil(ms / 1000));
@@ -155,11 +155,11 @@ export function Card({
 export function DisclaimerBanner({ dark = false }: { dark?: boolean }) {
   return dark ? (
     <p className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-xs leading-relaxed text-amber-200">
-      {DISCLAIMER_FR}
+      {DISCLAIMER_EN}
     </p>
   ) : (
     <p className="rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm leading-relaxed text-amber-900">
-      {DISCLAIMER_FR}
+      {DISCLAIMER_EN}
     </p>
   );
 }

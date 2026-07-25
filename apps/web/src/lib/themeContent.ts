@@ -1,5 +1,5 @@
 import { BookOpen, Globe, Lightbulb, Leaf, Users, type LucideIcon } from 'lucide-react';
-import { THEME_LABELS, type Theme } from '@parlons/shared';
+import { THEME_LABELS, THEME_LABELS_EN, type Theme } from '@parlons/shared';
 
 /**
  * Presentation-only metadata for the five IB themes: icon, accent colour and the
@@ -22,60 +22,60 @@ export interface ThemeContent {
 export const THEME_CONTENT: ThemeContent[] = [
   {
     id: 'identites',
-    label: THEME_LABELS.identites,
-    subtitle: 'Identities',
+    label: THEME_LABELS_EN.identites,
+    subtitle: THEME_LABELS.identites,
     icon: Users,
     color: '#1b4fd8',
     description:
-      'Culture nationale et régionale, identité culturelle, croyances et valeurs, sous-culture.',
+      'National and regional culture, cultural identity, beliefs and values, subcultures.',
     heroImage:
       'https://images.unsplash.com/photo-1531742633345-8adf1181733c?w=800&h=600&fit=crop&auto=format',
-    heroAlt: 'Expression culturelle et identité personnelle',
+    heroAlt: 'Cultural expression and personal identity',
   },
   {
     id: 'experiences',
-    label: THEME_LABELS.experiences,
-    subtitle: 'Experiences',
+    label: THEME_LABELS_EN.experiences,
+    subtitle: THEME_LABELS.experiences,
     icon: BookOpen,
     color: '#0ea5e9',
-    description: 'Loisirs, vacances et tourisme, rites de passage, coutumes et traditions.',
+    description: 'Leisure, holidays and travel, rites of passage, customs and traditions.',
     heroImage:
       'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800&h=600&fit=crop&auto=format',
-    heroAlt: 'Voyage et découverte de nouvelles cultures',
+    heroAlt: 'Travel and discovering new cultures',
   },
   {
     id: 'ingeniosite',
-    label: THEME_LABELS.ingeniosite,
-    subtitle: 'Human Ingenuity',
+    label: THEME_LABELS_EN.ingeniosite,
+    subtitle: THEME_LABELS.ingeniosite,
     icon: Lightbulb,
     color: '#7c3aed',
     description:
-      'Divertissements, expressions artistiques, communications et médias, technologie.',
+      'Entertainment, artistic expression, communication and media, technology.',
     heroImage:
       'https://images.unsplash.com/photo-1581090464777-f3220bbe1b8b?w=800&h=600&fit=crop&auto=format',
-    heroAlt: 'Robotique et innovation technologique',
+    heroAlt: 'Robotics and technological innovation',
   },
   {
     id: 'organisation',
-    label: THEME_LABELS.organisation,
-    subtitle: 'Social Organisation',
+    label: THEME_LABELS_EN.organisation,
+    subtitle: THEME_LABELS.organisation,
     icon: Globe,
     color: '#059669',
-    description: 'Voisinage, éducation, monde du travail, médias et communication.',
+    description: 'Neighbourhoods, education, the world of work, media and communication.',
     heroImage:
       'https://images.unsplash.com/photo-1767274075370-d6aecfd8969d?w=800&h=600&fit=crop&auto=format',
-    heroAlt: 'Mouvements sociaux et engagement citoyen',
+    heroAlt: 'Social movements and civic engagement',
   },
   {
     id: 'planete',
-    label: THEME_LABELS.planete,
-    subtitle: 'Sharing the Planet',
+    label: THEME_LABELS_EN.planete,
+    subtitle: THEME_LABELS.planete,
     icon: Leaf,
     color: '#16a34a',
-    description: 'Environnement, paix et conflits, égalité, mondialisation.',
+    description: 'The environment, peace and conflict, equality, globalisation.',
     heroImage:
       'https://images.unsplash.com/photo-1585871746932-e133d3fedf4d?w=800&h=600&fit=crop&auto=format',
-    heroAlt: 'Notre planète : une ressource précieuse à protéger',
+    heroAlt: 'Our planet: a precious resource to protect',
   },
 ];
 
@@ -87,26 +87,26 @@ export function themeContent(id: Theme): ThemeContent {
 export const CRITERIA_SUMMARY = [
   {
     code: 'A',
-    label: 'Langue',
+    label: 'Language',
     max: 12,
-    desc: 'Vocabulaire, grammaire, prononciation, intonation et aisance du débit.',
+    desc: 'Vocabulary, grammar, pronunciation, intonation and fluency of delivery.',
   },
   {
     code: 'B1',
-    label: 'Message — stimulus visuel',
+    label: 'Message — visual stimulus',
     max: 6,
-    desc: 'Pertinence et profondeur des idées liées à l’image et à la culture francophone.',
+    desc: 'Relevance and depth of ideas linked to the image and to francophone culture.',
   },
   {
     code: 'B2',
     label: 'Message — conversation',
     max: 6,
-    desc: 'Pertinence et développement des réponses dans les parties 2 et 3.',
+    desc: 'Relevance and development of answers in parts 2 and 3.',
   },
   {
     code: 'C',
-    label: 'Compétences interactives',
+    label: 'Interactive skills',
     max: 6,
-    desc: 'Compréhension des questions, autonomie et maintien de la conversation.',
+    desc: 'Understanding the questions, independence and sustaining the conversation.',
   },
 ] as const;

@@ -1,8 +1,3 @@
-<<<<<<< Updated upstream
-import type { SessionMode, TranscriptSegmentDto } from '@parlons/shared';
-import type { ExaminerService, StimulusContext } from '../examiner/ExaminerService.js';
-import type { DeliverySummary } from '../analysis/competence.js';
-=======
 import type { Phase, SessionMode, TranscriptSegmentDto } from '@parlons/shared';
 import { PHASES } from '@parlons/shared';
 import type {
@@ -10,7 +5,6 @@ import type {
   SessionAudio,
   StimulusContext,
 } from '../examiner/ExaminerService.js';
->>>>>>> Stashed changes
 import { scoreRepo, transcriptRepo } from '../db/repositories/index.js';
 import { getStorageService } from '../storage/StorageService.js';
 
@@ -47,7 +41,6 @@ export async function scoreAndPersist(
   meta: {
     lowConfidenceSegments: number;
     endedEarlyAt?: 'PART1' | 'PART2' | 'PART3' | null;
-    delivery?: DeliverySummary;
   },
 ) {
   const segments = await transcriptRepo.listBySession(sessionId);
@@ -77,11 +70,7 @@ export async function scoreAndPersist(
     stimulus,
     mode,
     sttConfidenceSummary: { avg, lowConfidenceSegmentIds },
-<<<<<<< Updated upstream
-    delivery: meta.delivery,
-=======
     audio,
->>>>>>> Stashed changes
   });
 
   // Live speech-to-text can drop out entirely; when it does, keep what the

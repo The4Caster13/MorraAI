@@ -7,12 +7,27 @@ export const THEMES = [
 ] as const;
 export type Theme = (typeof THEMES)[number];
 
+/**
+ * The IB's own French names for the five prescribed themes.
+ *
+ * Kept in French because that is what they are officially called and what the
+ * examiner works from. The interface is in English — see THEME_LABELS_EN.
+ */
 export const THEME_LABELS: Record<Theme, string> = {
   identites: 'Identités',
   experiences: 'Expériences',
   ingeniosite: 'Ingéniosité humaine',
   organisation: 'Organisation sociale',
   planete: 'Partage de la planète',
+};
+
+/** English theme names, used everywhere in the interface. */
+export const THEME_LABELS_EN: Record<Theme, string> = {
+  identites: 'Identities',
+  experiences: 'Experiences',
+  ingeniosite: 'Human Ingenuity',
+  organisation: 'Social Organisation',
+  planete: 'Sharing the Planet',
 };
 
 export const SESSION_MODES = ['exam', 'practice'] as const;
@@ -51,7 +66,20 @@ export const CRITERION_MAX: Record<Criterion, number> = {
 };
 
 export const MAX_NOTEPAD_BULLETS = 10;
-export const PREP_SECONDS_DEFAULT = 900;
-export const PART1_SECONDS_CAP = 240;
-export const PART2_SECONDS_CAP = 300;
-export const PART3_SECONDS_CAP = 360;
+/**
+ * Exam timings, in seconds. Single source of truth — the server's phase timers,
+ * the prep slider bounds and the on-screen copy all derive from these.
+ *
+ * Format: 10 minutes preparation, a 10 minute presentation, then 5 minutes of
+ * questioning split between the stimulus discussion and the general
+ * conversation.
+ */
+export const PREP_SECONDS_DEFAULT = 600;
+export const PART1_SECONDS_CAP = 600;
+/** Parts 2 and 3 together make up the 5-minute questioning period. */
+export const PART2_SECONDS_CAP = 150;
+export const PART3_SECONDS_CAP = 150;
+
+export const QUESTIONING_SECONDS_TOTAL = PART2_SECONDS_CAP + PART3_SECONDS_CAP;
+/** Upper bound of the practice-mode preparation slider, in minutes. */
+export const PREP_MINUTES_MAX = 15;

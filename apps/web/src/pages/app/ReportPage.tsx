@@ -29,7 +29,7 @@ const CRITERION_TITLES: Record<string, string> = {
   A: 'A — Langue',
   B1: 'B1 — Message : stimulus',
   B2: 'B2 — Message : conversation',
-  C: 'C — Compétences interactives',
+  C: 'C — Interactive skills',
 };
 
 function ScoreBar({
@@ -96,7 +96,7 @@ function CriterionDetail({ code, result }: { code: string; result: CriterionResu
       {result.evidenceQuotes.length > 0 && (
         <>
           <p className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Extraits cités
+            Quoted extracts
           </p>
           <ul className="space-y-1.5">
             {result.evidenceQuotes.map((q, i) => (
@@ -119,7 +119,7 @@ const DELIVERY_ASPECTS = [
   { key: 'pronunciation', label: 'Prononciation', icon: Volume2 },
   { key: 'intonation', label: 'Intonation', icon: AudioLines },
   { key: 'fluency', label: 'Aisance', icon: Waves },
-  { key: 'pace', label: 'Débit', icon: Gauge },
+  { key: 'pace', label: 'Pace', icon: Gauge },
 ] as const;
 
 /**
@@ -142,14 +142,14 @@ function DeliveryCard({ delivery, accent }: { delivery: DeliveryDto; accent: str
               : { background: 'rgba(245,158,11,0.12)', color: '#fbbf24' }
           }
         >
-          {delivery.audioAssessed ? 'Analysé depuis votre enregistrement' : 'Non analysé'}
+          {delivery.audioAssessed ? 'Assessed from your recording' : 'Not assessed'}
         </span>
       </div>
 
       {!delivery.audioAssessed && (
         <p className="mb-5 text-sm leading-relaxed text-amber-200">
-          Aucun enregistrement exploitable n'a pu être analysé, donc la prononciation et
-          l'intonation n'ont pas été prises en compte dans le critère A.
+          No usable recording could be analysed, so pronunciation and intonation were not
+          taken into account for Criterion A.
         </p>
       )}
 
@@ -221,7 +221,7 @@ export function ReportPage() {
 
   const remove = async () => {
     if (!sessionId) return;
-    if (!confirm('Supprimer définitivement cette session, son audio et sa transcription ?')) return;
+    if (!confirm('Permanently delete this session, its recording and its transcript?')) return;
     await api.deleteSession(sessionId, ensureUserId());
     navigate('/history');
   };
@@ -229,7 +229,7 @@ export function ReportPage() {
   if (!session) {
     return (
       <div className="on-dark flex min-h-screen items-center justify-center bg-navy-deep text-slate-400">
-        <p>Chargement du rapport…</p>
+        <p>Loading report…</p>
       </div>
     );
   }
@@ -245,10 +245,10 @@ export function ReportPage() {
         <div className="mb-10 flex flex-wrap items-start justify-between gap-4">
           <div className="results-header">
             <h1 className="mb-2 font-display text-4xl font-black text-white">
-              <SplitText text="Vos résultats" />
+              <SplitText text="Your results" />
             </h1>
             <p className="text-sm text-slate-400">
-              {content.label} · {session.mode === 'exam' ? 'Mode examen' : 'Mode entraînement'} ·{' '}
+              {content.label} · {session.mode === 'exam' ? 'Exam mode' : 'Practice mode'} ·{' '}
               {new Date(session.createdAt).toLocaleDateString('fr-FR')}
             </p>
           </div>
@@ -258,9 +258,9 @@ export function ReportPage() {
         {!score && (
           <div className="rounded-2xl border border-white/[0.07] bg-white/[0.03] p-6">
             <p className="text-sm text-slate-300">
-              Aucune évaluation n'est disponible pour cette session (statut : {session.status}).
+              No marks are available for this session (status: {session.status}).
               {session.status === 'ABANDONED' &&
-                ' La session a été interrompue avant la fin de la partie 3.'}
+                ' The session was ended before part 3 finished.'}
             </p>
           </div>
         )}
@@ -269,7 +269,7 @@ export function ReportPage() {
           <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
             <div className="results-card flex flex-col items-center justify-center rounded-2xl border border-white/[0.07] bg-white/[0.03] p-8 text-center">
               <p className="mb-4 text-xs uppercase tracking-widest text-slate-400">
-                Total estimé
+                Estimated total
               </p>
               <div
                 ref={totalRef}
@@ -288,14 +288,14 @@ export function ReportPage() {
                 </span>
               </div>
               <p className="text-lg font-bold text-white">sur 30</p>
-              <p className="mt-1 text-xs text-slate-500">Estimation d'entraînement</p>
+              <p className="mt-1 text-xs text-slate-500">Practice estimate</p>
             </div>
 
             <div className="results-card rounded-2xl border border-white/[0.07] bg-white/[0.03] p-7 lg:col-span-2">
               <div className="mb-6 flex items-center gap-2">
                 <TrendingUp size={16} style={{ color: content.color }} aria-hidden="true" />
                 <h2 className="text-sm font-bold uppercase tracking-wide text-white">
-                  Détail par critère
+                  Criterion breakdown
                 </h2>
               </div>
               <ScoreBar code="A" score={score.criterionA.mark} max={CRITERION_MAX.A} delay={0.5} />
@@ -331,7 +331,7 @@ export function ReportPage() {
               <div className="mb-5 flex items-center gap-2">
                 <Sparkles size={16} className="text-green-400" aria-hidden="true" />
                 <h2 className="text-sm font-bold uppercase tracking-wide text-white">
-                  Points forts
+                  Strengths
                 </h2>
               </div>
               <ul className="space-y-3">
@@ -356,7 +356,7 @@ export function ReportPage() {
               <div className="mb-5 flex items-center gap-2">
                 <Target size={16} className="text-brand-bright" aria-hidden="true" />
                 <h2 className="text-sm font-bold uppercase tracking-wide text-white">
-                  Priorités
+                  Priorities
                 </h2>
               </div>
               <ol className="space-y-3">
@@ -381,7 +381,7 @@ export function ReportPage() {
                   <div className="mb-3 mt-6 flex items-center gap-2 border-t border-white/10 pt-5">
                     <Brain size={15} className="text-slate-400" aria-hidden="true" />
                     <h3 className="text-xs font-bold uppercase tracking-wide text-slate-400">
-                      Exercices suggérés
+                      Suggested drills
                     </h3>
                   </div>
                   <ul className="space-y-1.5">
@@ -410,13 +410,13 @@ export function ReportPage() {
               <span className="text-xs text-slate-500">({transcript.length} segments)</span>
             </div>
             <Button variant="ghost-dark" onClick={() => setShowTranscript((v) => !v)}>
-              {showTranscript ? 'Masquer' : 'Afficher'}
+              {showTranscript ? 'Hide' : 'Show'}
             </Button>
           </div>
           {showTranscript && (
             <div className="max-h-96 space-y-2 overflow-y-auto">
               {transcript.length === 0 && (
-                <p className="text-sm text-slate-500">Aucune transcription enregistrée.</p>
+                <p className="text-sm text-slate-500">No transcript was recorded.</p>
               )}
               {transcript.map((seg) => (
                 <p key={seg.id} className="text-sm leading-relaxed">
@@ -426,7 +426,7 @@ export function ReportPage() {
                       seg.speaker === 'EXAMINER' ? 'text-brand-bright' : 'text-slate-200'
                     }`}
                   >
-                    {seg.speaker === 'EXAMINER' ? 'Examinateur' : 'Vous'} :{' '}
+                    {seg.speaker === 'EXAMINER' ? 'Examiner' : 'You'}:{' '}
                   </span>
                   <span className="text-slate-400">{seg.text}</span>
                 </p>
@@ -453,7 +453,7 @@ export function ReportPage() {
             Mon historique
           </Link>
           <Button variant="danger" onClick={remove}>
-            Supprimer cette session
+            Delete this session
           </Button>
         </div>
       </div>

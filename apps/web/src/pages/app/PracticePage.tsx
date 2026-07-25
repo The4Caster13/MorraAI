@@ -1,7 +1,14 @@
 import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, CheckCircle, Play, Shuffle } from 'lucide-react';
-import type { SessionMode, Theme } from '@parlons/shared';
+import {
+  PART1_SECONDS_CAP,
+  PREP_MINUTES_MAX,
+  PREP_SECONDS_DEFAULT,
+  QUESTIONING_SECONDS_TOTAL,
+  type SessionMode,
+  type Theme,
+} from '@parlons/shared';
 import { api } from '../../lib/api';
 import { ensureUserId, getStoredDisplayName, saveProfile } from '../../lib/profile';
 import { THEME_CONTENT } from '../../lib/themeContent';
@@ -12,13 +19,13 @@ import { Button, ErrorNote, Logo } from '../../components/ui';
 const MODES: Array<{ id: SessionMode; label: string; blurb: string }> = [
   {
     id: 'exam',
-    label: 'Mode examen',
-    blurb: "Conditions réelles : 15 min de préparation, stimulus imposé, questions à l'oral seulement.",
+    label: 'Exam Mode',
+    blurb: `You have ${PREP_SECONDS_DEFAULT / 60} minutes of preparation with a randomly chosen photo to prepare a ${PART1_SECONDS_CAP / 60} minute presentation, followed by ${QUESTIONING_SECONDS_TOTAL / 60} minutes of questioning. You are only allowed to make 10 point notes.`,
   },
   {
     id: 'practice',
-    label: 'Mode entraînement',
-    blurb: 'Préparation ajustable, choix du thème, texte des questions affichable.',
+    label: 'Practice Mode',
+    blurb: 'Adjustable preparation, theme selection, displayable question text.',
   },
 ];
 
@@ -27,22 +34,32 @@ export function PracticePage() {
   const [params] = useSearchParams();
   const presetTheme = params.get('theme') as Theme | null;
 
-  const [displayName, setDisplayName] = useState(getStoredDisplayName() || 'Élève');
+  const [displayName, setDisplayName] = useState(getStoredDisplayName() || 'Student');
   const [mode, setMode] = useState<SessionMode>(presetTheme ? 'practice' : 'exam');
   const [theme, setTheme] = useState<Theme | null>(presetTheme);
-  const [prepMinutes, setPrepMinutes] = useState(15);
+  const [prepMinutes, setPrepMinutes] = useState(PREP_SECONDS_DEFAULT / 60);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const ref = useEntranceAnimation<HTMLDivElement>(() => {
-    gsap.from('.theme-card', {
-      opacity: 0,
-      y: 50,
-      scale: 0.95,
-      stagger: 0.07,
-      duration: 0.6,
-      ease: 'power3.out',
-    });
+    // fromTo + clearProps rather than gsap.from: `from` leaves the cards at
+    // opacity 0 until the tween finishes, so anything that interrupts it — a
+    // background tab pausing rAF, a reverted context — leaves them permanently
+    // invisible. clearProps strips the inline styles once it lands, so the
+    // cards' visibility never depends on an animation having completed.
+    gsap.fromTo(
+      '.theme-card',
+      { opacity: 0, y: 50, scale: 0.95 },
+      {
+        opacity: 1,
+        y: 0,
+        scale: 1,
+        stagger: 0.07,
+        duration: 0.6,
+        ease: 'power3.out',
+        clearProps: 'all',
+      },
+    );
   });
 
   // In exam mode the examiner picks the stimulus, mirroring the real exam.
@@ -57,7 +74,7 @@ export function PracticePage() {
     setError(null);
     try {
       const userId = ensureUserId();
-      const name = displayName.trim() || 'Élève';
+      const name = displayName.trim() || 'Student';
       await api.createUser(userId, name);
       saveProfile(userId, name);
       const session = await api.createSession({
@@ -68,7 +85,7 @@ export function PracticePage() {
       });
       navigate(`/session/${session.id}/consent`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Impossible de démarrer la session');
+      setError(err instanceof Error ? err.message : 'Could not start the session');
       setBusy(false);
     }
   };
@@ -81,21 +98,21 @@ export function PracticePage() {
             to="/"
             className="flex items-center gap-2 text-sm text-slate-400 transition-colors hover:text-white"
           >
-            <ArrowLeft size={16} /> Retour au site
+            <ArrowLeft size={16} /> Back to site
           </Link>
           <Logo size="sm" dark />
         </div>
 
         <h1 className="mb-2 font-display text-4xl font-black text-white">
-          Configurez votre oral
+          Set up your oral
         </h1>
         <p className="mb-10 text-slate-400">
-          Choisissez votre mode. L'examinateur adapte automatiquement la difficulté à votre
-          niveau pendant la session.
+          Choose your mode. The examiner adapts the difficulty to your level automatically as
+          the session goes on.
         </p>
 
         <label htmlFor="name" className="mb-2 block text-xs font-semibold uppercase tracking-widest text-slate-400">
-          Votre prénom
+          Your first name
         </label>
         <input
           id="name"
@@ -148,26 +165,30 @@ export function PracticePage() {
               htmlFor="prep"
               className="mb-2 block text-xs font-semibold uppercase tracking-widest text-slate-400"
             >
-              Temps de préparation : {prepMinutes} min
+              Preparation Time : {prepMinutes} min
             </label>
             <input
               id="prep"
               type="range"
               min={0}
-              max={20}
+              max={PREP_MINUTES_MAX}
               value={prepMinutes}
               onChange={(e) => setPrepMinutes(Number(e.target.value))}
               className="w-full accent-brand"
             />
-            <p className="mt-1 text-xs text-slate-500">Le véritable examen accorde 15 minutes.</p>
+            <p className="mt-1 text-xs text-slate-500">
+              The real exam gives you {PREP_SECONDS_DEFAULT / 60} minutes to prepare, then a{' '}
+              {PART1_SECONDS_CAP / 60} minute presentation and{' '}
+              {QUESTIONING_SECONDS_TOTAL / 60} minutes of questioning.
+            </p>
           </div>
         )}
 
         <div className="mb-4 flex items-baseline justify-between">
-          <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-400">Thème</h2>
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-slate-400">Theme</h2>
           {!themeIsChoosable && (
             <span className="flex items-center gap-1.5 text-xs text-slate-500">
-              <Shuffle size={12} /> Imposé en mode examen
+              <Shuffle size={12} /> Chosen for you in exam mode
             </span>
           )}
         </div>
@@ -178,6 +199,49 @@ export function PracticePage() {
           }`}
           aria-disabled={!themeIsChoosable}
         >
+          {/*
+            Random is a real choice, not the absence of one. Without a card for
+            it the only way to get a random stimulus is to click a selected
+            theme to deselect it, which nothing on screen suggests.
+          */}
+          <button
+            onClick={() => setTheme(null)}
+            aria-pressed={themeIsChoosable && theme === null}
+            tabIndex={themeIsChoosable ? 0 : -1}
+            className="theme-card rounded-2xl p-6 text-left transition-all duration-300 hover:scale-[1.02]"
+            style={
+              themeIsChoosable && theme === null
+                ? {
+                    background: '#1b4fd818',
+                    border: '1px solid #1b4fd850',
+                    boxShadow: '0 8px 32px #1b4fd820',
+                  }
+                : {
+                    background: 'rgba(255,255,255,0.03)',
+                    border: '1px solid rgba(255,255,255,0.07)',
+                  }
+            }
+          >
+            <span
+              className="mb-5 flex h-12 w-12 items-center justify-center rounded-xl"
+              style={{ background: '#1b4fd822' }}
+            >
+              <Shuffle size={22} style={{ color: '#1b4fd8' }} aria-hidden="true" />
+            </span>
+            <span className="mb-1 block text-lg font-bold text-white">Random</span>
+            <span className="mb-3 block text-xs font-medium" style={{ color: '#1b4fd8' }}>
+              Just like the exam
+            </span>
+            <span className="block text-sm leading-relaxed text-slate-400">
+              The examiner picks the theme and the stimulus for you, with no warning.
+            </span>
+            {themeIsChoosable && theme === null && (
+              <span className="mt-4 flex items-center gap-1.5 text-xs" style={{ color: '#1b4fd8' }}>
+                <CheckCircle size={13} /> Selected
+              </span>
+            )}
+          </button>
+
           {THEME_CONTENT.map((t) => {
             const Icon = t.icon;
             const active = effectiveTheme === t.id;
@@ -216,7 +280,7 @@ export function PracticePage() {
                 </span>
                 {active && (
                   <span className="mt-4 flex items-center gap-1.5 text-xs" style={{ color: t.color }}>
-                    <CheckCircle size={13} /> Sélectionné
+                    <CheckCircle size={13} /> Selected
                   </span>
                 )}
               </button>
@@ -234,15 +298,15 @@ export function PracticePage() {
           <Button onClick={start} disabled={busy} variant="accent" accent={accent}>
             <Play size={18} />
             {busy
-              ? 'Préparation…'
+              ? 'Starting…'
               : effectiveTheme
-                ? `Démarrer — ${THEME_CONTENT.find((t) => t.id === effectiveTheme)!.label}`
-                : "Démarrer l'oral"}
+                ? `Start — ${THEME_CONTENT.find((t) => t.id === effectiveTheme)!.label}`
+                : 'Start the oral'}
           </Button>
           <p className="text-xs text-slate-500">
             {effectiveTheme
-              ? 'Un stimulus de ce thème sera tiré au sort.'
-              : 'Un thème et un stimulus seront tirés au sort, comme à l’examen.'}
+              ? 'A stimulus from this theme will be drawn at random.'
+              : 'A theme and stimulus will be drawn at random, just like the exam.'}
           </p>
         </div>
       </div>
