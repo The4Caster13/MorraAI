@@ -23,8 +23,14 @@ Any Postgres works. Local Docker is fine too:
 ```bash
 docker run -d --name parlons-db -e POSTGRES_PASSWORD=parlons -p 5432:5432 postgres:16
 # DATABASE_URL="postgresql://postgres:parlons@localhost:5432/postgres"
-# DIRECT_URL="postgresql://postgres:parlons@localhost:5432/postgres"
 ```
+
+`DIRECT_URL` is optional — it defaults to `DATABASE_URL`. You only need to set it separately
+when `DATABASE_URL` points at a connection pooler, because migrations can't run through one.
+That's the Supabase case: pooled URL on port 6543, direct on 5432.
+
+Put `.env` at the **repo root**, not in `apps/server/`. Both are read (`apps/server/.env`
+wins if present), but the root is the documented location.
 
 ### 2. Environment
 
@@ -247,6 +253,26 @@ Open <http://localhost:3001> — the app should load from the server directly, w
 dev server running.
 
 ---
+
+## Troubleshooting
+
+**`Environment variable not found: DIRECT_URL`** — you're on a build from before
+`apps/server/prisma.config.ts` existed. Pull latest. `DIRECT_URL` is now optional and the
+root `.env` is found from the workspace.
+
+**`Could not find Prisma Schema`** — run Prisma via the workspace script
+(`npm run db:deploy --workspace=apps/server`) rather than `npx prisma` from the repo root.
+The config file lives in `apps/server`.
+
+**`Can't reach database server`** — check the container is up (`docker ps`) or, on Supabase,
+that you copied the connection string with the password substituted in; the dashboard shows
+`[YOUR-PASSWORD]` as a placeholder.
+
+**Migrations hang or fail on Supabase** — you're running them through the pooled URL. Set
+`DIRECT_URL` to the port-5432 connection string.
+
+**`prisma generate` fails on install** — needs network access to `binaries.prisma.sh` to
+fetch its query engine. Behind a proxy or firewall, that's the thing to allow.
 
 ## Known limits of this guide
 
