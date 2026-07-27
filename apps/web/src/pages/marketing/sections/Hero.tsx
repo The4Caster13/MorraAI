@@ -1,5 +1,5 @@
 import { gsap } from 'gsap';
-import { ChevronRight, Play } from 'lucide-react';
+import { ChevronRight, Play, UserPlus } from 'lucide-react';
 import { useEntranceAnimation, useTypewriter } from '../../../hooks/useAnimations';
 import { LinkButton } from '../../../components/ui';
 
@@ -57,9 +57,13 @@ export function Hero() {
       </p>
 
       <div className="hero-cta mb-16 flex flex-col items-center gap-3 sm:flex-row">
-        <LinkButton to="/practice" variant="primary">
+        <LinkButton to="/signup" variant="primary">
+          <UserPlus size={16} />
+          Sign up free
+        </LinkButton>
+        <LinkButton to="/practice" variant="secondary">
           <Play size={16} />
-          Start a mock IO
+          Start practice
         </LinkButton>
         <button
           onClick={() => document.getElementById('how')?.scrollIntoView({ behavior: 'smooth' })}

@@ -27,10 +27,11 @@ export const wsGateway: FastifyPluginAsync = async (app) => {
       socket.close(4404, 'Session not found');
       return;
     }
-    // Same self-asserted ownership check as the REST routes — see requireOwner
-    // in routes/sessions.ts for why this is not yet real authentication.
-    const { userId } = (req.query ?? {}) as { userId?: string };
-    if (!userId || userId !== session.userId) {
+    // Same ownership check as the REST routes — see requireOwner in
+    // routes/sessions.ts. req.currentUser comes from the auth plugin's
+    // onRequest hook, which runs for this WS upgrade request exactly as it
+    // does for any REST route.
+    if (!req.currentUser || req.currentUser.id !== session.userId) {
       socket.close(4403, 'Not your session');
       return;
     }

@@ -1,11 +1,23 @@
 import type { Prisma } from '@prisma/client';
-import type { ScoreDto, SessionDto, SessionSummaryDto, StimulusDto } from '@morrai/shared';
+import type { CurrentUserDto, ScoreDto, SessionDto, SessionSummaryDto, StimulusDto } from '@morrai/shared';
 import { deliverySchema, DISCLAIMER_FR, notepadBulletsSchema } from '@morrai/shared';
+import type { SessionUser } from '../auth/session.js';
 
 type StimulusRow = Prisma.StimulusGetPayload<object>;
 type SessionRow = Prisma.SessionGetPayload<{ include: { stimulus: true } }>;
 type SessionWithScore = Prisma.SessionGetPayload<{ include: { stimulus: true; score: true } }>;
 type ScoreRow = Prisma.ScoreGetPayload<object>;
+
+export function toCurrentUserDto(u: SessionUser): CurrentUserDto {
+  return {
+    id: u.id,
+    // Null here means a guest — see ensureIdentity.ts.
+    email: u.email,
+    displayName: u.displayName,
+    emailVerified: u.emailVerifiedAt !== null,
+    createdAt: u.createdAt.toISOString(),
+  };
+}
 
 export function toStimulusDto(s: StimulusRow): StimulusDto {
   return {

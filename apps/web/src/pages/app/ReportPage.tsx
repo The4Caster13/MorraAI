@@ -21,7 +21,6 @@ import type {
 } from '@morrai/shared';
 import { CRITERION_MAX } from '@morrai/shared';
 import { api } from '../../lib/api';
-import { ensureUserId } from '../../lib/profile';
 import { themeContent } from '../../lib/themeContent';
 import { Button, Card, DisclaimerBanner, Logo, SplitText } from '../../components/ui';
 import { useConfirm } from '../../components/ConfirmDialog';
@@ -203,9 +202,8 @@ export function ReportPage() {
 
   useEffect(() => {
     if (!sessionId) return;
-    const userId = ensureUserId();
-    void api.getSession(sessionId, userId).then(setSession);
-    void api.getTranscript(sessionId, userId).then(setTranscript);
+    void api.getSession(sessionId).then(setSession);
+    void api.getTranscript(sessionId).then(setTranscript);
   }, [sessionId]);
 
   useEffect(() => {
@@ -232,7 +230,7 @@ export function ReportPage() {
       confirmLabel: 'Delete',
     });
     if (!ok) return;
-    await api.deleteSession(sessionId, ensureUserId());
+    await api.deleteSession(sessionId);
     navigate('/history');
   };
 

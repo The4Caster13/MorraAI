@@ -3,7 +3,6 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { Award, Mic, MicOff, Play } from 'lucide-react';
 import { PART1_SECONDS_CAP, type SessionDto } from '@morrai/shared';
 import { api } from '../../lib/api';
-import { ensureUserId } from '../../lib/profile';
 import { themeContent } from '../../lib/themeContent';
 import { useWebSocketClient } from '../../hooks/useWebSocketClient';
 import { useMicCapture } from '../../hooks/useMicCapture';
@@ -56,7 +55,7 @@ export function ExamPage() {
 
   useEffect(() => {
     if (!sessionId) return;
-    void api.getSession(sessionId, ensureUserId()).then(setSession);
+    void api.getSession(sessionId).then(setSession);
     return () => reset();
   }, [sessionId, reset]);
 

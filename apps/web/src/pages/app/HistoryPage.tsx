@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, TrendingUp } from 'lucide-react';
 import type { SessionSummaryDto } from '@morrai/shared';
 import { api } from '../../lib/api';
-import { getStoredUserId } from '../../lib/profile';
 import { themeContent } from '../../lib/themeContent';
 import { Button, Card, Logo } from '../../components/ui';
 import { useConfirm } from '../../components/ConfirmDialog';
@@ -11,26 +10,20 @@ import { useConfirm } from '../../components/ConfirmDialog';
 export function HistoryPage() {
   const [sessions, setSessions] = useState<SessionSummaryDto[]>([]);
   const [loading, setLoading] = useState(true);
-  const userId = getStoredUserId();
   const { confirm, dialog } = useConfirm();
 
   useEffect(() => {
-    if (!userId) {
-      setLoading(false);
-      return;
-    }
     void api
-      .listSessions(userId)
+      .listSessions()
       .then(setSessions)
       .catch(() => setSessions([]))
       .finally(() => setLoading(false));
-  }, [userId]);
+  }, []);
 
   const remove = async (id: string) => {
-    if (!userId) return;
     if (!(await confirm({ message: 'Permanently delete this session?', danger: true, confirmLabel: 'Delete' })))
       return;
-    await api.deleteSession(id, userId);
+    await api.deleteSession(id);
     setSessions((prev) => prev.filter((s) => s.id !== id));
   };
 

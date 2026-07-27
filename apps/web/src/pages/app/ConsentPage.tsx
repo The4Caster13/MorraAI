@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Mic, ShieldCheck, Trash2 } from 'lucide-react';
 import { api } from '../../lib/api';
-import { ensureUserId } from '../../lib/profile';
 import { Button, Card, ErrorNote, Logo, PageHeading } from '../../components/ui';
 
 const CONSENT_TEXT_VERSION = '2026-07-25.v1';
@@ -39,7 +38,7 @@ export function ConsentPage() {
     if (!sessionId) return;
     let cancelled = false;
     void api
-      .getSession(sessionId, ensureUserId())
+      .getSession(sessionId)
       .then((session) => {
         if (cancelled) return;
         if (session.status !== 'DRAFT') {
@@ -62,7 +61,6 @@ export function ConsentPage() {
     setError(null);
     try {
       await api.consent(sessionId, {
-        userId: ensureUserId(),
         recordingConsent: true,
         dataRetentionAcknowledged: true,
         consentTextVersion: CONSENT_TEXT_VERSION,

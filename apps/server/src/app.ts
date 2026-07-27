@@ -7,7 +7,8 @@ import fastifyStatic from '@fastify/static';
 import websocket from '@fastify/websocket';
 import { env, examinerMode } from './config/env.js';
 import { hintForError } from './errorHint.js';
-import { userRoutes } from './routes/users.js';
+import { authPlugin } from './auth/plugin.js';
+import { authRoutes } from './routes/auth.js';
 import { stimulusRoutes } from './routes/stimuli.js';
 import { sessionRoutes } from './routes/sessions.js';
 import { wsGateway } from './ws/gateway.js';
@@ -79,6 +80,7 @@ export async function buildApp() {
     credentials: true,
   });
   await app.register(websocket);
+  await app.register(authPlugin);
 
   app.get('/api/health', async () => ({
     status: 'ok',
@@ -97,7 +99,7 @@ export async function buildApp() {
     return reply.header('Content-Type', contentType).send(createReadStream(path));
   });
 
-  await app.register(userRoutes);
+  await app.register(authRoutes);
   await app.register(stimulusRoutes);
   await app.register(sessionRoutes);
   await app.register(wsGateway);

@@ -2,7 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { wsServerMessageSchema, type WsClientMessage } from '@morrai/shared';
 import { useSessionStore } from '../state/sessionStore';
 import { PcmStreamingPlayer } from '../lib/audio/pcmPlayer';
-import { ensureUserId } from '../lib/profile';
 
 export function useWebSocketClient(sessionId: string | undefined) {
   const socketRef = useRef<WebSocket | null>(null);
@@ -15,11 +14,11 @@ export function useWebSocketClient(sessionId: string | undefined) {
     const player = new PcmStreamingPlayer();
     playerRef.current = player;
 
+    // Ownership is enforced server-side from the session cookie (sent
+    // automatically on this same-origin WS handshake), so no userId needs to
+    // travel in the URL anymore.
     const proto = window.location.protocol === 'https:' ? 'wss' : 'ws';
-    const socket = new WebSocket(
-      `${proto}://${window.location.host}/ws/session/${sessionId}` +
-        `?userId=${encodeURIComponent(ensureUserId())}`,
-    );
+    const socket = new WebSocket(`${proto}://${window.location.host}/ws/session/${sessionId}`);
     socketRef.current = socket;
 
     socket.onopen = () => {

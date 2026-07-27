@@ -90,10 +90,10 @@ function Navbar() {
 
         <div className="hidden md:flex">
           <Link
-            to="/practice"
+            to="/signin"
             className="rounded-full bg-navy px-5 py-2 text-sm font-semibold text-white transition-all hover:opacity-90"
           >
-            Start practice →
+            Sign in
           </Link>
         </div>
 

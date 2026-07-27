@@ -10,10 +10,10 @@ import {
   type Theme,
 } from '@morrai/shared';
 import { api } from '../../lib/api';
-import { ensureUserId, getStoredDisplayName, saveProfile } from '../../lib/profile';
 import { clearAccessCode, isAccessCodeError, saveAccessCode } from '../../lib/accessCode';
 import { THEME_CONTENT } from '../../lib/themeContent';
 import { useEntranceAnimation } from '../../hooks/useAnimations';
+import { useAuthStore } from '../../state/authStore';
 import { gsap } from 'gsap';
 import { Button, ErrorNote, Logo } from '../../components/ui';
 
@@ -35,7 +35,8 @@ export function PracticePage() {
   const [params] = useSearchParams();
   const presetTheme = params.get('theme') as Theme | null;
 
-  const [displayName, setDisplayName] = useState(getStoredDisplayName() || 'Student');
+  const displayName = useAuthStore((s) => s.user?.displayName ?? 'Student');
+  const resetAuth = useAuthStore((s) => s.reset);
   const [mode, setMode] = useState<SessionMode>(presetTheme ? 'practice' : 'exam');
   const [theme, setTheme] = useState<Theme | null>(presetTheme);
   const [prepMinutes, setPrepMinutes] = useState(PREP_SECONDS_DEFAULT / 60);
@@ -76,12 +77,7 @@ export function PracticePage() {
     setBusy(true);
     setError(null);
     try {
-      const userId = ensureUserId();
-      const name = displayName.trim() || 'Student';
-      await api.createUser(userId, name);
-      saveProfile(userId, name);
       const session = await api.createSession({
-        userId,
         mode,
         theme: effectiveTheme ?? undefined,
         prepSeconds: mode === 'practice' ? prepMinutes * 60 : undefined,
@@ -98,6 +94,12 @@ export function PracticePage() {
       }
       setBusy(false);
     }
+  };
+
+  const signOut = async () => {
+    await api.signOut().catch(() => {});
+    resetAuth();
+    navigate('/');
   };
 
   const submitAccessCode = async () => {
@@ -118,27 +120,26 @@ export function PracticePage() {
           >
             <ArrowLeft size={16} /> Back to site
           </Link>
-          <Link to="/" aria-label="Morra AI — home">
-            <Logo size="sm" />
-          </Link>
+          <div className="flex items-center gap-5">
+            <Link to="/" aria-label="Morra AI — home">
+              <Logo size="sm" />
+            </Link>
+            <button
+              onClick={() => void signOut()}
+              className="text-sm text-slate-400 transition-colors hover:text-navy"
+            >
+              Sign out
+            </button>
+          </div>
         </div>
 
-        <h1 className="mb-2 font-display text-4xl font-black text-navy">Set up your oral</h1>
+        <h1 className="mb-2 font-display text-4xl font-black text-navy">
+          Set up your oral, {displayName}
+        </h1>
         <p className="mb-10 text-slate-500">
           Choose your mode. The examiner adapts the difficulty to your level automatically as
           the session goes on.
         </p>
-
-        <label htmlFor="name" className="mb-2 block text-xs font-semibold uppercase tracking-widest text-slate-400">
-          Your first name
-        </label>
-        <input
-          id="name"
-          type="text"
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-          className="mb-10 w-full max-w-xs rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-navy outline-none focus:border-brand"
-        />
 
         <fieldset className="mb-10">
           <legend className="mb-3 text-xs font-semibold uppercase tracking-widest text-slate-400">

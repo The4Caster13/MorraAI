@@ -9,11 +9,46 @@ datasource db {
 }
 
 model User {
-  id          String          @id @default(uuid())
-  displayName String
-  createdAt   DateTime        @default(now())
-  sessions    Session[]
-  consents    ConsentRecord[]
+  id              String          @id @default(uuid())
+  displayName     String
+  // Nullable: pre-auth anonymous rows keep these null forever and simply
+  // become unreachable by login — a deliberate "fresh start", not a bug.
+  email           String?         @unique
+  passwordHash    String?
+  emailVerifiedAt DateTime?
+  createdAt       DateTime        @default(now())
+  sessions        Session[]
+  consents        ConsentRecord[]
+  authSessions    AuthSession[]
+  authTokens      AuthToken[]
+}
+
+/** A signed-in browser session — the cookie carries only this row's id. */
+model AuthSession {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  userAgent String?
+  ipAddress String?
+
+  @@index([userId])
+}
+
+/** Single-use email-verification / password-reset links, keyed by purpose. */
+model AuthToken {
+  id        String    @id @default(uuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tokenHash String    @unique
+  purpose   String
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, purpose])
 }
 
 model Stimulus {

@@ -106,7 +106,6 @@ export const sessionSummarySchema = z.object({
 export type SessionSummaryDto = z.infer<typeof sessionSummarySchema>;
 
 export const createSessionRequestSchema = z.object({
-  userId: z.string().uuid(),
   mode: z.enum(SESSION_MODES),
   theme: z.enum(THEMES).optional(),
   stimulusId: z.string().optional(),
@@ -115,15 +114,49 @@ export const createSessionRequestSchema = z.object({
 export type CreateSessionRequest = z.infer<typeof createSessionRequestSchema>;
 
 export const consentRequestSchema = z.object({
-  userId: z.string().uuid(),
   recordingConsent: z.literal(true),
   dataRetentionAcknowledged: z.literal(true),
   consentTextVersion: z.string(),
 });
 export type ConsentRequest = z.infer<typeof consentRequestSchema>;
 
-export const createUserRequestSchema = z.object({
-  id: z.string().uuid(),
+export const signUpRequestSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8).max(200),
   displayName: z.string().min(1).max(60),
 });
-export type CreateUserRequest = z.infer<typeof createUserRequestSchema>;
+export type SignUpRequest = z.infer<typeof signUpRequestSchema>;
+
+export const signInRequestSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(1),
+});
+export type SignInRequest = z.infer<typeof signInRequestSchema>;
+
+export const requestPasswordResetSchema = z.object({
+  email: z.string().email(),
+});
+export type RequestPasswordReset = z.infer<typeof requestPasswordResetSchema>;
+
+export const resetPasswordSchema = z.object({
+  token: z.string().min(1),
+  newPassword: z.string().min(8).max(200),
+});
+export type ResetPasswordRequest = z.infer<typeof resetPasswordSchema>;
+
+export const verifyEmailRequestSchema = z.object({
+  token: z.string().min(1),
+});
+export type VerifyEmailRequest = z.infer<typeof verifyEmailRequestSchema>;
+
+export const currentUserSchema = z.object({
+  id: z.string(),
+  // Null identifies a guest — someone using the app without an account yet
+  // (see ensureIdentity on the server). Signing up or signing in folds their
+  // data into a real account, which always has an email.
+  email: z.string().nullable(),
+  displayName: z.string(),
+  emailVerified: z.boolean(),
+  createdAt: z.string(),
+});
+export type CurrentUserDto = z.infer<typeof currentUserSchema>;

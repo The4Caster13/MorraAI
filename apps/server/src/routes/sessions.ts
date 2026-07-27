@@ -8,45 +8,42 @@ import {
   PREP_SECONDS_DEFAULT,
   SPEAKERS,
 } from '@morrai/shared';
-import { sessionRepo, stimulusRepo, transcriptRepo, userRepo } from '../db/repositories/index.js';
+import { sessionRepo, stimulusRepo, transcriptRepo } from '../db/repositories/index.js';
 import { assertTransition, InvalidTransitionError } from '../session/sessionMachine.js';
 import { disposeRuntime } from '../session/SessionRuntime.js';
 import { getStorageService } from '../storage/StorageService.js';
 import { toScoreDto, toSessionDto, toSessionSummaryDto } from './mappers.js';
 import { requireAccessCode } from './accessCode.js';
+import { requireAuth } from '../auth/requireAuth.js';
+import { ensureIdentity } from '../auth/ensureIdentity.js';
+import type { SessionUser } from '../auth/session.js';
 
 const CONSENT_TEXT_VERSION = '2026-07-25.v1';
 
-const callerSchema = z.object({ userId: z.string().uuid() });
-
 /**
- * Session-scoped reads and deletes must name their caller.
- *
- * NOTE: this is ownership, not authentication. `userId` is still a
- * self-asserted UUID from the browser, so it stops a leaked or guessed session
- * ID from exposing another student's recording, but it does not stop someone
- * who already knows a userId. Replacing this with real signed sessions is a
- * prerequisite for handling minors' voice data in production.
+ * Session-scoped reads and deletes must belong to the signed-in caller.
+ * `req.currentUser` comes from the auth plugin's session-cookie resolution —
+ * this replaces a prior self-asserted `userId` query param, which any client
+ * could set to any value.
  */
 function requireOwner(
   session: { userId: string },
-  query: unknown,
-): { ok: true; userId: string } | { ok: false; code: 400 | 403; error: unknown } {
-  const parsed = callerSchema.safeParse(query);
-  if (!parsed.success) return { ok: false, code: 400, error: parsed.error.flatten() };
-  if (parsed.data.userId !== session.userId)
-    return { ok: false, code: 403, error: 'Not your session' };
-  return { ok: true, userId: parsed.data.userId };
+  currentUser: SessionUser | null,
+): { ok: true } | { ok: false; code: 401 | 403; error: string } {
+  if (!currentUser) return { ok: false, code: 401, error: 'Not signed in' };
+  if (currentUser.id !== session.userId) return { ok: false, code: 403, error: 'Not your session' };
+  return { ok: true };
 }
 
 export const sessionRoutes: FastifyPluginAsync = async (app) => {
-  app.post('/api/sessions', { preHandler: requireAccessCode }, async (req, reply) => {
+  // ensureIdentity (not requireAuth) — this is the entry point for a guest
+  // trying a mock interview with no account at all, so it provisions an
+  // identity rather than rejecting one that's missing.
+  app.post('/api/sessions', { preHandler: [requireAccessCode, ensureIdentity] }, async (req, reply) => {
     const parsed = createSessionRequestSchema.safeParse(req.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-    const { userId, mode, theme, stimulusId, prepSeconds } = parsed.data;
-
-    const user = await userRepo.findById(userId);
-    if (!user) return reply.code(404).send({ error: 'User not found' });
+    const { mode, theme, stimulusId, prepSeconds } = parsed.data;
+    const userId = req.currentUser!.id;
 
     const stimulus = stimulusId
       ? await stimulusRepo.findById(stimulusId)
@@ -67,15 +64,15 @@ export const sessionRoutes: FastifyPluginAsync = async (app) => {
     return reply.code(201).send(toSessionDto(session));
   });
 
-  app.post('/api/sessions/:id/consent', async (req, reply) => {
+  app.post('/api/sessions/:id/consent', { preHandler: requireAuth }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const parsed = consentRequestSchema.safeParse(req.body);
     if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
 
     const session = await sessionRepo.findById(id);
     if (!session) return reply.code(404).send({ error: 'Session not found' });
-    if (session.userId !== parsed.data.userId)
-      return reply.code(403).send({ error: 'Not your session' });
+    const owner = requireOwner(session, req.currentUser);
+    if (!owner.ok) return reply.code(owner.code).send({ error: owner.error });
 
     // A browser-back landing on a stale consent screen for a session that has
     // already moved on (or finished) re-submits the same consent the student
@@ -97,7 +94,7 @@ export const sessionRoutes: FastifyPluginAsync = async (app) => {
 
     await sessionRepo.recordConsent({
       sessionId: id,
-      userId: parsed.data.userId,
+      userId: req.currentUser!.id,
       consentTextVersion: CONSENT_TEXT_VERSION,
       recordingConsent: parsed.data.recordingConsent,
       dataRetentionAcknowledged: parsed.data.dataRetentionAcknowledged,
@@ -106,11 +103,11 @@ export const sessionRoutes: FastifyPluginAsync = async (app) => {
     return toSessionDto(updated);
   });
 
-  app.get('/api/sessions/:id', async (req, reply) => {
+  app.get('/api/sessions/:id', { preHandler: requireAuth }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const session = await sessionRepo.findById(id);
     if (!session) return reply.code(404).send({ error: 'Session not found' });
-    const owner = requireOwner(session, req.query);
+    const owner = requireOwner(session, req.currentUser);
     if (!owner.ok) return reply.code(owner.code).send({ error: owner.error });
     return {
       ...toSessionDto(session),
@@ -118,11 +115,11 @@ export const sessionRoutes: FastifyPluginAsync = async (app) => {
     };
   });
 
-  app.get('/api/sessions/:id/transcript', async (req, reply) => {
+  app.get('/api/sessions/:id/transcript', { preHandler: requireAuth }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const session = await sessionRepo.findById(id);
     if (!session) return reply.code(404).send({ error: 'Session not found' });
-    const owner = requireOwner(session, req.query);
+    const owner = requireOwner(session, req.currentUser);
     if (!owner.ok) return reply.code(owner.code).send({ error: owner.error });
     const segments = await transcriptRepo.listBySession(id);
     return segments.map((s) => ({
@@ -136,18 +133,16 @@ export const sessionRoutes: FastifyPluginAsync = async (app) => {
     }));
   });
 
-  app.get('/api/sessions', async (req, reply) => {
-    const parsed = z.object({ userId: z.string().uuid() }).safeParse(req.query);
-    if (!parsed.success) return reply.code(400).send({ error: parsed.error.flatten() });
-    const rows = await sessionRepo.listByUser(parsed.data.userId);
+  app.get('/api/sessions', { preHandler: requireAuth }, async (req) => {
+    const rows = await sessionRepo.listByUser(req.currentUser!.id);
     return rows.map(toSessionSummaryDto);
   });
 
-  app.delete('/api/sessions/:id', async (req, reply) => {
+  app.delete('/api/sessions/:id', { preHandler: requireAuth }, async (req, reply) => {
     const { id } = req.params as { id: string };
     const session = await sessionRepo.findById(id);
     if (!session) return reply.code(404).send({ error: 'Session not found' });
-    const owner = requireOwner(session, req.query);
+    const owner = requireOwner(session, req.currentUser);
     if (!owner.ok) return reply.code(owner.code).send({ error: owner.error });
     await disposeRuntime(id);
     await getStorageService()
@@ -157,7 +152,7 @@ export const sessionRoutes: FastifyPluginAsync = async (app) => {
     return reply.code(204).send();
   });
 
-  app.get('/api/sessions/:id/audio/:phase/:speaker', async (req, reply) => {
+  app.get('/api/sessions/:id/audio/:phase/:speaker', { preHandler: requireAuth }, async (req, reply) => {
     const params = z
       .object({
         id: z.string().uuid(),
@@ -169,7 +164,7 @@ export const sessionRoutes: FastifyPluginAsync = async (app) => {
     const { id, phase, speaker } = params.data;
     const session = await sessionRepo.findById(id);
     if (!session) return reply.code(404).send({ error: 'Session not found' });
-    const owner = requireOwner(session, req.query);
+    const owner = requireOwner(session, req.currentUser);
     if (!owner.ok) return reply.code(owner.code).send({ error: owner.error });
     const file = await transcriptRepo.findAudioFile(id, phase, speaker);
     if (!file) return reply.code(404).send({ error: 'Audio not found' });

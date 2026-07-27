@@ -71,6 +71,17 @@ const envSchema = z.object({
   // synthesise no audio until a voice is named.
   GEMINI_VOICE: z.string().default('Kore'),
   EXAMINER_MODE: z.enum(['mock', 'gemini']).optional(),
+  // Transactional email for account verification / password reset. Unset:
+  // the link is logged to the server console instead of emailed, so local
+  // dev and tests never require a real provider account.
+  RESEND_API_KEY: optionalFilled(z.string().min(1)),
+  EMAIL_FROM: z.string().default('Morra AI <onboarding@resend.dev>'),
+  EMAIL_MODE: z.enum(['console', 'resend']).optional(),
+  // The frontend's own origin, for building absolute verify/reset links in
+  // emails. Distinct from DEV_WEB_ORIGIN (that one is "who may call the API");
+  // this is "where does the SPA live" — they happen to match today but will
+  // diverge once the frontend/backend split-deployment work resumes.
+  APP_BASE_URL: z.string().url().default('http://localhost:5173'),
   // Shared password guarding session creation. Unset means open, which is right
   // for local development; on a public URL it is the only thing standing
   // between a stranger and ~15 minutes of billable realtime audio per click.
@@ -104,4 +115,9 @@ export function examinerMode(e: Env = env): 'mock' | 'gemini' {
 export function storageMode(e: Env = env): 'local' | 'supabase' {
   if (e.STORAGE_MODE) return e.STORAGE_MODE;
   return e.SUPABASE_URL && e.SUPABASE_SERVICE_ROLE_KEY ? 'supabase' : 'local';
+}
+
+export function emailMode(e: Env = env): 'console' | 'resend' {
+  if (e.EMAIL_MODE) return e.EMAIL_MODE;
+  return e.RESEND_API_KEY ? 'resend' : 'console';
 }

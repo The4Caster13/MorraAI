@@ -1,11 +1,17 @@
 import type {
   ConsentRequest,
   CreateSessionRequest,
+  CurrentUserDto,
+  RequestPasswordReset,
+  ResetPasswordRequest,
   ScoreDto,
   SessionDto,
   SessionSummaryDto,
+  SignInRequest,
+  SignUpRequest,
   StimulusDto,
   TranscriptSegmentDto,
+  VerifyEmailRequest,
 } from '@morrai/shared';
 import { ACCESS_CODE_HEADER, getAccessCode } from './accessCode';
 
@@ -45,6 +51,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const accessCode = getAccessCode();
   const res = await fetch(path, {
     ...init,
+    // Sends the session cookie. Harmless today (dev proxies through Vite,
+    // prod serves the SPA from the same origin as the API) and is what a
+    // later cross-origin split-deployment would need anyway.
+    credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
       ...(accessCode ? { [ACCESS_CODE_HEADER]: accessCode } : {}),
@@ -72,10 +82,43 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  createUser(id: string, displayName: string) {
-    return request<{ id: string; displayName: string }>('/api/users', {
+  signUp(body: SignUpRequest) {
+    return request<{ user: CurrentUserDto }>('/api/auth/signup', {
       method: 'POST',
-      body: JSON.stringify({ id, displayName }),
+      body: JSON.stringify(body),
+    });
+  },
+  signIn(body: SignInRequest) {
+    return request<{ user: CurrentUserDto }>('/api/auth/signin', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+  signOut() {
+    return request<void>('/api/auth/signout', { method: 'POST' });
+  },
+  me() {
+    return request<{ user: CurrentUserDto | null }>('/api/auth/me');
+  },
+  verifyEmail(body: VerifyEmailRequest) {
+    return request<{ ok: true }>('/api/auth/verify-email', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+  resendVerification() {
+    return request<{ ok: true }>('/api/auth/resend-verification', { method: 'POST' });
+  },
+  requestPasswordReset(body: RequestPasswordReset) {
+    return request<{ ok: true }>('/api/auth/request-password-reset', {
+      method: 'POST',
+      body: JSON.stringify(body),
+    });
+  },
+  resetPassword(body: ResetPasswordRequest) {
+    return request<{ user: CurrentUserDto }>('/api/auth/reset-password', {
+      method: 'POST',
+      body: JSON.stringify(body),
     });
   },
   listStimuli(theme?: string) {
@@ -91,22 +134,16 @@ export const api = {
       body: JSON.stringify(body),
     });
   },
-  getSession(sessionId: string, userId: string) {
-    return request<SessionDto & { score: ScoreDto | null }>(
-      `/api/sessions/${sessionId}?userId=${encodeURIComponent(userId)}`,
-    );
+  getSession(sessionId: string) {
+    return request<SessionDto & { score: ScoreDto | null }>(`/api/sessions/${sessionId}`);
   },
-  getTranscript(sessionId: string, userId: string) {
-    return request<TranscriptSegmentDto[]>(
-      `/api/sessions/${sessionId}/transcript?userId=${encodeURIComponent(userId)}`,
-    );
+  getTranscript(sessionId: string) {
+    return request<TranscriptSegmentDto[]>(`/api/sessions/${sessionId}/transcript`);
   },
-  listSessions(userId: string) {
-    return request<SessionSummaryDto[]>(`/api/sessions?userId=${encodeURIComponent(userId)}`);
+  listSessions() {
+    return request<SessionSummaryDto[]>('/api/sessions');
   },
-  deleteSession(sessionId: string, userId: string) {
-    return request<void>(`/api/sessions/${sessionId}?userId=${encodeURIComponent(userId)}`, {
-      method: 'DELETE',
-    });
+  deleteSession(sessionId: string) {
+    return request<void>(`/api/sessions/${sessionId}`, { method: 'DELETE' });
   },
 };
